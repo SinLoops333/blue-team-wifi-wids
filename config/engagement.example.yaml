@@ -1,0 +1,24 @@
+# Authorized engagement (operator-in-the-loop). Copy to engagement.yaml.
+# Live RF actions still require lab.targets ⊆ allowlist + CONFIRM.
+
+engagement:
+  name: "HomeLab WIDS Validation"
+  operator: "sinloops999"
+  authorization: "Owner-operated lab equipment only. No third-party networks."
+  report_dir: data/reports
+  session_file: data/logs/engagement_session.json
+
+  # Rules of engagement — operator must acknowledge each at session start
+  roe:
+    - "Only equipment I own / explicitly authorize is in scope"
+    - "lab.targets must be a subset of wids allowlist"
+    - "No attacks on neighbor, cafe, or employer networks"
+    - "No stealth, evasion, or user-tracking features"
+    - "Every live RF action requires interactive CONFIRM (or audited --yes)"
+    - "Full audit logging is mandatory for this engagement"
+
+  allowed_actions:
+    - monitor
+    - lab_deauth
+    - lab_simulate
+    - export_report

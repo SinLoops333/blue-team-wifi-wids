@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WIDS — Blue-team Wi-Fi Monitor</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>WIDS</h1>
+      <p class="tag">Passive blue-team Wi-Fi intrusion detection</p>
+    </div>
+    <div class="status" id="conn-status">Connecting…</div>
+  </header>
+
+  <section class="cards" id="stat-cards">
+    <div class="card"><div class="label">Frames</div><div class="value" id="stat-frames">0</div></div>
+    <div class="card"><div class="label">APs seen</div><div class="value" id="stat-aps">0</div></div>
+    <div class="card"><div class="label">Alerts</div><div class="value" id="stat-alerts">0</div></div>
+    <div class="card"><div class="label">Uptime</div><div class="value" id="stat-uptime">0s</div></div>
+  </section>
+
+  <main class="grid">
+    <section class="panel">
+      <h2>Live alerts</h2>
+      <div id="alert-feed" class="alert-feed"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Frame rates</h2>
+      <canvas id="frame-chart" height="180"></canvas>
+    </section>
+
+    <section class="panel wide">
+      <h2>AP inventory</h2>
+      <div class="table-wrap">
+        <table id="ap-table">
+          <thead>
+            <tr>
+              <th>SSID</th>
+              <th>BSSID</th>
+              <th>Channel</th>
+              <th>Encryption</th>
+              <th>RSSI</th>
+              <th>Last seen</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel wide">
+      <h2>Alert history</h2>
+      <div class="table-wrap">
+        <table id="alert-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Severity</th>
+              <th>Type</th>
+              <th>Title</th>
+              <th>Evidence</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

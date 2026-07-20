@@ -1,0 +1,52 @@
+# Copy to config/wids.yaml and customize.
+# Credentials come from .env (PINEAPPLE_*); this file holds non-secret settings.
+
+capture:
+  # Mark VII recon radio is usually wlan1 (already Mode:Monitor).
+  # Use "auto" to pick the first monitor-mode iface.
+  interface: wlan1
+  snaplen: 256                 # bytes per frame (enough for headers + IEs)
+  ssh_timeout: 30
+  channel: null                # e.g. 11 to pin during Open999 lab tests
+
+# BSSIDs / SSIDs you own — never treated as rogue/evil-twin.
+# Always include the Pineapple's own radio MACs so PineAP is not self-flagged.
+# MAC addresses MUST be quoted (colons are special in YAML).
+allowlist:
+  bssids:
+    # - "00:13:37:be:ef:00"   # pineapple
+    # - "28:ee:52:01:f4:ab"   # your own AP
+  ssids: []
+
+detectors:
+  deauth:
+    window_seconds: 10
+    threshold: 20              # deauth/disassoc frames in window -> alert
+    ignore_broadcast_source: true
+  evil_twin:
+    enabled: true
+  karma:
+    window_seconds: 60
+    min_ssids_per_bssid: 5     # probe responses for this many SSIDs
+  pmkid:
+    enabled: true
+  handshake_harvest:
+    deauth_then_eapol_window: 15  # seconds between deauth and EAPOL
+
+anomaly:
+  enabled: true
+  window_seconds: 30
+  contamination: 0.05
+  min_train_windows: 20
+  model_path: models/baseline.pkl
+  inventory_path: models/ap_inventory.json
+
+dashboard:
+  host: 127.0.0.1
+  port: 8080
+
+store:
+  db_path: data/events.db
+
+alerts:
+  dedup_seconds: 60            # suppress identical alerts within this window

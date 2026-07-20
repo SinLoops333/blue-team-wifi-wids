@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Unit tests
+        run: pytest -q
+
+      - name: Evaluation harness
+        run: |
+          cp .env.example .env
+          cp config/wids.example.yaml config/wids.yaml
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("config/wids.yaml")
+          text = p.read_text()
+          if '- "00:13:37:a9:43:43"' not in text:
+              text = text.replace(
+                  "allowlist:\n  bssids:",
+                  'allowlist:\n  bssids:\n    - "00:13:37:a9:43:43"',
+                  1,
+              )
+          if "Open999" not in text:
+              text = text.replace("ssids: []", 'ssids:\n    - "Open999"', 1)
+          p.write_text(text)
+          PY
+          cp config/lab.example.yaml config/lab.yaml
+          python -m src.eval_main

@@ -1,0 +1,16 @@
+{
+  "session_id": "20364e3f",
+  "started_at": 1784581407.0248287,
+  "name": "HomeLab WIDS Validation",
+  "operator": "sinloops999",
+  "roe_acknowledged": [
+    "Only equipment I own / explicitly authorize is in scope",
+    "lab.targets must be a subset of wids allowlist",
+    "No attacks on neighbor, cafe, or employer networks",
+    "No stealth, evasion, or user-tracking features",
+    "Every live RF action requires interactive CONFIRM (or audited --yes)",
+    "Full audit logging is mandatory for this engagement"
+  ],
+  "active": false,
+  "ended_at": 1784581452.1022606
+}

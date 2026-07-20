@@ -1,0 +1,25 @@
+# Isolated lab (Phase 2) — attacks ONLY against equipment you own.
+# Every target BSSID MUST also appear in wids.yaml allowlist.bssids.
+# Copy to config/lab.yaml and edit.
+
+lab:
+  enabled: true
+  require_confirm: true          # must type CONFIRM (or use --yes only after confirm prompt)
+  inject_interface: wlan1        # monitor/inject radio on the Pineapple
+  audit_log: data/logs/lab_audit.jsonl
+
+  # Explicit attack targets (subset of allowlist). Empty = refuse all attacks.
+  targets:
+    - bssid: "00:13:37:a9:43:43"
+      ssid: "Open999"
+      channel: 11                 # must match AP channel (aireplay requires this)
+      notes: "Pineapple Open999 AP — owned by you; safe default lab target"
+
+  deauth:
+    count: 30                    # number of deauth frames (enough to trip WIDS threshold)
+    # Optional client MAC; omit / null = broadcast (ff:ff:ff:ff:ff:ff)
+    client: null
+
+  # Simulated detectors (no RF): write a pcap WIDS can replay, or run inline checks.
+  simulate:
+    output_pcap: data/captures/lab_simulated.pcap

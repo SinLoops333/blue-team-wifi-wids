@@ -1,0 +1,34 @@
+# Secrets and local config
+.env
+config/wids.yaml
+config/lab.yaml
+config/engagement.yaml
+data/reports/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# Data and models (generated)
+data/captures/*.pcap
+data/logs/*.log
+data/*.db
+models/*.pkl
+!models/.gitkeep
+!data/captures/.gitkeep
+!data/logs/.gitkeep
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
