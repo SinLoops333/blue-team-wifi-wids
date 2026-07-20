@@ -4,6 +4,9 @@ Passive **Wi-Fi Intrusion Detection** on a WiFi Pineapple Mark VII, plus an
 **isolated lab** and **authorized engagement** workflow. Live RF actions only
 hit allowlisted gear you own, with RoE + CONFIRM gates and full audit logs.
 
+**Demo video (2–3 min):** _add link after recording_ — follow
+[docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) (shot list + voiceover).
+
 ## Capabilities matrix
 
 | Capability | Command |
@@ -15,6 +18,7 @@ hit allowlisted gear you own, with RoE + CONFIRM gates and full audit logs.
 | Train anomaly baseline | `python -m src.main --train-baseline` |
 | Eval harness (P/R/F1, ROC-AUC) | `python -m src.eval_main` / `make eval` |
 | One-command demo | `make demo` |
+| Prep for video recording | `make prep-demo` |
 | Health check | `python -m src.status_main` |
 | Lab scope list | `python -m src.lab_main --list` |
 | Live deauth (owned AP) | `python -m src.lab_main --attack deauth` |
@@ -139,6 +143,7 @@ pytest -q
 
 - [Architecture](docs/ARCHITECTURE.md) — pipeline diagram
 - [Case study](docs/CASE_STUDY.md) — problem → design → metrics → ethics
+- [Demo script](docs/DEMO_SCRIPT.md) — 2–3 min recording shot list + voiceover
 - [Model card](docs/MODEL_CARD.md) — training, metrics, limitations, ethics
 - [Threat model](docs/THREAT_MODEL.md) — assets, adversaries, controls
 - [Sample eval metrics](docs/sample_metrics.json) — sanitized lab numbers

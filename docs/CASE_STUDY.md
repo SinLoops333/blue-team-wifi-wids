@@ -1,5 +1,7 @@
 # Case study: blue-team Wi-Fi WIDS
 
+**Demo video (2–3 min):** _add link after recording_ — [recording script](DEMO_SCRIPT.md).
+
 ## Problem
 
 Home / lab Wi-Fi environments need early warning for classic RF attacks
