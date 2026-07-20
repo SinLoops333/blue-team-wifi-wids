@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>WIDS lab validation — sample report (sanitized)</title>
+<style>
+body { font-family: system-ui, sans-serif; margin: 2rem; background: #0b1220; color: #e8eefc; }
+h1,h2 { color: #8b9bb8; }
+table { border-collapse: collapse; width: 100%; margin-bottom: 2rem; }
+th, td { border: 1px solid #243049; padding: 0.4rem 0.6rem; text-align: left; font-size: 0.9rem; }
+th { background: #121a2b; }
+code { font-size: 0.75rem; }
+.meta { color: #8b9bb8; }
+</style></head><body>
+<h1>WIDS lab validation — sample report (sanitized)</h1>
+<p class="meta">Generated 2026-07-20 16:37:35</p>
+<h2>Engagement</h2>
+<pre>{
+  "session_id": "sample-lab-0001",
+  "operator": "portfolio",
+  "scope": "Owned lab AP Open999 + synthetic pcaps only",
+  "started_at": 1784580000.0,
+  "ended_at": 1784580006.0,
+  "notes": "Sanitized sample. Signature pass rate=100%; IF ROC-AUC=1.0; OCSVM ROC-AUC=1.0."
+}</pre>
+<h2>Alerts (5)</h2>
+<table><tr><th>Time</th><th>Severity</th><th>Type</th><th>Title</th><th>Evidence</th></tr>
+<tr><td>1784580001.0</td><td>critical</td><td>evil_twin</td><td>Possible evil twin / rogue AP</td><td>SSID 'Open999' seen on new BSSID de:ad:be:ef:00:01 (lab sim); enc=OPEN ch=11</td></tr><tr><td>1784580002.0</td><td>high</td><td>deauth_flood</td><td>Deauth/disassoc flood detected</td><td>20 deauth frames from lab AP 00:13:37:a9:43:43 in 10s (threshold 20)</td></tr><tr><td>1784580003.0</td><td>high</td><td>karma</td><td>Possible KARMA / multi-SSID responder</td><td>BSSID aa:bb:cc:11:22:33 advertised 5 distinct lab SSIDs in 60s</td></tr><tr><td>1784580004.0</td><td>high</td><td>pmkid_harvest</td><td>PMKID observed in EAPOL frame</td><td>EAPOL with RSN PMKID on lab BSSID 00:13:37:a9:43:43</td></tr><tr><td>1784580005.0</td><td>high</td><td>handshake_harvest</td><td>Possible forced handshake capture</td><td>EAPOL observed shortly after deauth on lab BSSID 00:13:37:a9:43:43</td></tr>
+</table>
+<h2>Lab audit (3)</h2>
+<table><tr><th>Time</th><th>Event</th><th>Details</th></tr>
+<tr><td>None</td><td>engagement_start</td><td><code>{"ts": 1784580000.0, "roe_ack": true, "note": "lab-only sample"}</code></td></tr><tr><td>None</td><td>simulate</td><td><code>{"ts": 1784580001.5, "attack": "all", "target": "lab_synthetic"}</code></td></tr><tr><td>None</td><td>engagement_end</td><td><code>{"ts": 1784580006.0, "alerts": 5}</code></td></tr>
+</table>
+<h2>AP inventory snapshot (3)</h2>
+<table><tr><th>SSID</th><th>BSSID</th><th>Ch</th><th>Enc</th></tr>
+<tr><td>Open999</td><td>00:13:37:a9:43:43</td><td>11</td><td>WPA2/WPA3</td></tr><tr><td>Open999</td><td>de:ad:be:ef:00:01</td><td>11</td><td>OPEN</td></tr><tr><td>LabSimE</td><td>aa:bb:cc:11:22:33</td><td>6</td><td>WEP/PRIVACY</td></tr>
+</table>
+</body></html>

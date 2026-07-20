@@ -1,6 +1,6 @@
 # Case study: blue-team Wi-Fi WIDS
 
-**Demo video (2–3 min):** _add link after recording_ — [recording script](DEMO_SCRIPT.md).
+**Shareables:** [Interview brief](INTERVIEW_BRIEF.md) · [Sample report](sample_report.html) · [Metrics](sample_metrics.json)
 
 ## Problem
 
