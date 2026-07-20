@@ -45,6 +45,16 @@ def make_beacon(
     return pkt
 
 
+def make_probe_req(
+    client: str, ssid: str, bssid: str = "ff:ff:ff:ff:ff:ff"
+):
+    return (
+        RadioTap()
+        / Dot11(type=0, subtype=4, addr1=bssid, addr2=client, addr3=bssid)
+        / Dot11Elt(ID="SSID", info=ssid.encode())
+    )
+
+
 def make_probe_resp(
     bssid: str, ssid: str, channel: int = 6, dest: str = "aa:aa:aa:aa:aa:01"
 ):

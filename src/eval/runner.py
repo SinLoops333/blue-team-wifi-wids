@@ -14,6 +14,7 @@ from sklearn.svm import OneClassSVM
 from ..config import Config
 from ..detect.frame_features import FeatureExtractor, WindowFeatures, parse_frame
 from ..detect.fusion import RadioFusionEngine
+from ..detect.honeypot import HoneypotEngine, evaluate_honeypot_model
 from ..detect.signatures import SignatureEngine
 from .dataset import (
     Scenario,
@@ -36,12 +37,17 @@ ALERT_TYPES = [
     "radio_fingerprint_disagreement",
     "radio_channel_conflict",
     "radio_ssid_split_view",
+    "honeypot_recon_burst",
+    "honeypot_client_anomaly",
 ]
 
 
 def _run_scenario(cfg: Config, scenario: Scenario) -> Set[str]:
     engine = SignatureEngine(cfg)
     fusion = RadioFusionEngine(cfg)
+    honeypot = HoneypotEngine(cfg)
+    if honeypot.enabled():
+        honeypot.fit_default()
     engine.load_baseline_inventory(
         {
             "00:13:37:a9:43:43": {
@@ -59,13 +65,16 @@ def _run_scenario(cfg: Config, scenario: Scenario) -> Set[str]:
         pkt = item
         if isinstance(item, tuple) and len(item) == 2:
             pkt, radio_id = item
-        ev = parse_frame(pkt, timestamp=t0 + i * 0.01, radio_id=radio_id)
+        # Spread probes a bit so burst window sees them as near-simultaneous
+        ev = parse_frame(pkt, timestamp=t0 + i * 0.05, radio_id=radio_id)
         if ev is None:
             continue
         extractor.ingest(ev)
         for alert in engine.process(ev, extractor):
             predicted.add(alert.alert_type)
         for alert in fusion.process(ev):
+            predicted.add(alert.alert_type)
+        for alert in honeypot.process(ev):
             predicted.add(alert.alert_type)
     return predicted
 
@@ -88,6 +97,13 @@ def evaluate_signatures(cfg: Config) -> Dict[str, Any]:
     cfg.fusion = dict(cfg.fusion or {})
     cfg.fusion["enabled"] = True
     cfg.fusion.setdefault("disagreement_window_seconds", 30)
+    cfg.honeypot = dict(cfg.honeypot or {})
+    cfg.honeypot["enabled"] = True
+    cfg.honeypot["ssids"] = list(
+        set(cfg.honeypot.get("ssids") or []) | {"Open999"}
+    )
+    cfg.honeypot.setdefault("burst_probe_threshold", 12)
+    cfg.allowlist_ssids = set(cfg.allowlist_ssids) | {"Open999"}
 
     expected_sets: List[Set[str]] = []
     predicted_sets: List[Set[str]] = []
@@ -239,6 +255,7 @@ def run_full_eval(cfg: Config) -> Dict[str, Any]:
         "generated_at": time.time(),
         "signatures": evaluate_signatures(cfg),
         "anomaly_models": anomaly,
+        "honeypot_client_model": evaluate_honeypot_model(),
         # Back-compat key used by older tests / docs
         "isolation_forest": {
             "n_train_benign": anomaly["n_train_benign"],
@@ -313,6 +330,18 @@ def report_markdown(result: Dict[str, Any]) -> str:
             f"- `{c['feature']}`: delta={c['delta']} "
             f"(value={c['value']}, baseline={c['baseline_mean']})"
         )
+
+    hp = result.get("honeypot_client_model") or {}
+    if hp:
+        lines += [
+            "",
+            "## Honeypot client model (benign phone vs recon STA)",
+            "",
+            f"ROC-AUC: **{hp.get('roc_auc')}**  "
+            f"(train_benign={hp.get('n_train_benign')}, "
+            f"test_recon={hp.get('n_test_recon')})",
+            "",
+        ]
 
     sweep = result.get("deauth_threshold_sweep") or {}
     lines += [

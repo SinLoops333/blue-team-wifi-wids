@@ -34,6 +34,7 @@ from src.detect.anomaly import AnomalyDetector
 from src.detect.baseline import BaselineStore
 from src.detect.frame_features import FeatureExtractor, parse_frame
 from src.detect.fusion import RadioFusionEngine
+from src.detect.honeypot import HoneypotEngine
 from src.detect.signatures import SignatureEngine
 from src.logging_setup import configure_logging, log_alert
 
@@ -79,6 +80,9 @@ class WIDSEngine:
         self.anomaly.load()
 
         self.fusion = RadioFusionEngine(config)
+        self.honeypot = HoneypotEngine(config)
+        if self.honeypot.enabled():
+            self.honeypot.load_or_train_default()
 
         dedup_s = float(config.alerts.get("dedup_seconds", 60))
         self.deduper = AlertDeduper(dedup_seconds=dedup_s)
@@ -112,6 +116,7 @@ class WIDSEngine:
 
         alerts = self.signatures.process(event, self.extractor)
         alerts.extend(self.fusion.process(event))
+        alerts.extend(self.honeypot.process(event))
         self._emit(alerts)
 
         now = event.timestamp

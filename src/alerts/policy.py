@@ -27,6 +27,8 @@ DEFAULT_TYPE_SEVERITY = {
     "beacon_fingerprint_mismatch": AlertSeverity.CRITICAL,
     "radio_fingerprint_disagreement": AlertSeverity.CRITICAL,
     "radio_ssid_split_view": AlertSeverity.CRITICAL,
+    "honeypot_recon_burst": AlertSeverity.HIGH,
+    "honeypot_client_anomaly": AlertSeverity.MEDIUM,
     "radio_channel_conflict": AlertSeverity.HIGH,
 }
 

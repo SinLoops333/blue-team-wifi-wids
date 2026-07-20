@@ -111,18 +111,18 @@ def build_scenarios() -> List[Scenario]:
             label="beacon_clone",
             expected_alerts={"beacon_tsf_anomaly"},
             packets=[
-                # TSF +10_000 per eval step (0.01s) ≈ 1e6 ticks/s
+                # TSF +50_000 per eval step (0.05s) ≈ 1e6 ticks/s
                 sim._beacon(
                     real_bssid,
                     real_ssid,
                     channel=11,
                     open_network=False,
-                    tsf=1_000_000 + 10_000 * i,
+                    tsf=1_000_000 + 50_000 * i,
                 )
                 for i in range(5)
             ]
             + [
-                # Backward jump > 1s of TSF from ~1.04e6 → 100
+                # Backward jump > 1s of TSF from ~1.2e6 → 100
                 sim._beacon(
                     real_bssid,
                     real_ssid,
@@ -186,6 +186,15 @@ def build_scenarios() -> List[Scenario]:
                     ),
                     "secondary",
                 ),
+            ],
+        ),
+        Scenario(
+            name="honeypot_recon_burst",
+            label="honeypot",
+            expected_alerts={"honeypot_recon_burst"},
+            packets=[
+                sim._probe_req(sim.LAB_SCANNER_CLIENT, real_ssid, bssid=real_bssid)
+                for _ in range(15)
             ],
         ),
         Scenario(

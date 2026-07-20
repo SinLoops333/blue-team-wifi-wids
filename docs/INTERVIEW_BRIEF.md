@@ -29,6 +29,7 @@ path is receive-only; live RF only hits allowlisted gear I own with CONFIRM.
 3. “Live RF is gated by allowlist ∩ human CONFIRM and an audit log; the public default is passive monitor only.”
 4. “CI fails the build if signature scenarios drop below 100% pass or IsolationForest ROC-AUC falls under 0.8.”
 5. “Dual-radio fusion on the Mark VII compares pinned vs hopping monitors for SSID split views and IE disagreements.”
+6. “An owned honeypot SSID plus a client IsolationForest separates phone-like probes from automated recon bursts.”
 
 ## Stack
 

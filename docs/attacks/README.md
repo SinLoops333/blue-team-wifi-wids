@@ -24,6 +24,7 @@ Scope rules: lab targets ⊆ `config/wids.yaml` allowlist. Foreign BSSIDs are re
 | Deauth then EAPOL | `handshake_harvest` | [pmkid_and_handshake.md](pmkid_and_handshake.md) |
 | Same-BSSID IE / TSF clone | `beacon_fingerprint_mismatch`, `beacon_tsf_anomaly` | [beacon_clone.md](beacon_clone.md) |
 | Multi-radio fusion | `radio_ssid_split_view`, `radio_channel_conflict`, `radio_fingerprint_disagreement` | [fusion.md](fusion.md) |
+| Owned honeypot recon | `honeypot_recon_burst`, `honeypot_client_anomaly` | [honeypot.md](honeypot.md) |
 | IsolationForest outlier | `anomaly` | (ML baseline; see README) |
 
 ## Code entry points

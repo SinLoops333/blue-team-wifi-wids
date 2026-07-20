@@ -81,6 +81,7 @@ class Config:
         # Back-compat: allow fusion under capture.fusion
         if not self.fusion and isinstance(self._raw.get("capture"), dict):
             self.fusion = (self._raw["capture"].get("fusion") or {})
+        self.honeypot = self._raw.get("honeypot") or {}
 
     def path(self, relative: str) -> Path:
         """Resolve a path relative to the project root."""

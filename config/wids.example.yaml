@@ -72,3 +72,14 @@ fusion:
   hop_channels: [1, 6, 11]
   hop_seconds: 2.0
   disagreement_window_seconds: 30
+
+# Owned honeypot — classify clients that probe/auth YOUR SSIDs (not KARMA)
+honeypot:
+  enabled: false
+  ssids: []                   # e.g. ["Open999"] — must be networks you own
+  bssids: []
+  window_seconds: 60
+  burst_probe_threshold: 12   # honeypot probes / 10s → recon burst alert
+  min_probes_for_ml: 5
+  contamination: 0.08
+  model_path: models/honeypot_client.pkl

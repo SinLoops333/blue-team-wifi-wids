@@ -23,6 +23,8 @@ from ..scope import LabScope, ScopeError
 LAB_EVIL_TWIN_BSSID = "de:ad:be:ef:00:01"
 LAB_KARMA_BSSID = "aa:bb:cc:11:22:33"
 
+LAB_SCANNER_CLIENT = "aa:aa:aa:11:22:33"
+
 SIMULATE_CHOICES = (
     "evil_twin",
     "karma",
@@ -31,6 +33,7 @@ SIMULATE_CHOICES = (
     "pmkid",
     "handshake_harvest",
     "beacon_clone",
+    "honeypot_recon",
     "all",
 )
 
@@ -63,6 +66,26 @@ def _beacon(
     if extra_vendor_oui is not None:
         pkt = pkt / Dot11Elt(ID=221, info=extra_vendor_oui + b"\x01clone")
     return pkt
+
+
+def _probe_req(client: str, ssid: str, bssid: str = "ff:ff:ff:ff:ff:ff"):
+    return (
+        RadioTap()
+        / Dot11(
+            type=0,
+            subtype=4,
+            addr1=bssid,
+            addr2=client,
+            addr3=bssid,
+        )
+        / Dot11Elt(ID="SSID", info=ssid.encode())
+    )
+
+
+def _auth(client: str, bssid: str):
+    return RadioTap() / Dot11(
+        type=0, subtype=11, addr1=bssid, addr2=client, addr3=bssid
+    )
 
 
 def _probe_resp(bssid: str, ssid: str, channel: int = 6):
@@ -198,6 +221,18 @@ def build_beacon_clone_pcap(scope: LabScope) -> List:
     return base + [clone_fp, clone_tsf]
 
 
+def build_honeypot_recon_pcap(scope: LabScope) -> List:
+    """Burst of probes from one STA toward the owned lab SSID (scanner-like)."""
+    real = scope.lab.targets[0]
+    if not real.ssid:
+        raise ScopeError("Lab target needs an ssid for honeypot-recon simulation")
+    client = LAB_SCANNER_CLIENT
+    # 15 probes in a burst toward owned honeypot SSID
+    return [
+        _probe_req(client, real.ssid, bssid=real.bssid) for _ in range(15)
+    ] + [_auth(client, real.bssid)]
+
+
 def build_all(scope: LabScope) -> List:
     pkts: List = []
     pkts.extend(build_evil_twin_pcap(scope))
@@ -206,6 +241,7 @@ def build_all(scope: LabScope) -> List:
     pkts.extend(build_pmkid_pcap(scope))
     pkts.extend(build_handshake_harvest_pcap(scope))
     pkts.extend(build_beacon_clone_pcap(scope))
+    pkts.extend(build_honeypot_recon_pcap(scope))
     return pkts
 
 
@@ -224,6 +260,7 @@ def write_simulation(
         "pmkid": build_pmkid_pcap,
         "handshake_harvest": build_handshake_harvest_pcap,
         "beacon_clone": build_beacon_clone_pcap,
+        "honeypot_recon": build_honeypot_recon_pcap,
         "all": build_all,
     }
     if attack not in builders:

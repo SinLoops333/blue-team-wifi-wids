@@ -47,6 +47,7 @@ beacon IE fingerprint / TSF clone detection.
 | **Handshake harvest** | Deauth shortly followed by EAPOL |
 | **Beacon clone** | Same BSSID but IE fingerprint change or TSF clock anomaly |
 | **Radio fusion** | Multi-radio SSID split / channel conflict / IE disagreement |
+| **Honeypot client** | Probe bursts + RandomForest on STA behavior toward owned SSIDs |
 | **Anomaly (ML)** | IsolationForest + feature attribution; OCSVM compared in eval |
 
 ## Layout

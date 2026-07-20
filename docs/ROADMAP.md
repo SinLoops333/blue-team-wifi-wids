@@ -6,8 +6,8 @@ Build order (one at a time):
 |---|---|---|
 | **A** | Beacon IE fingerprint + TSF clock-skew clone detection | **Done** |
 | **B** | Dual-radio / multi-channel sensor fusion | **Done** |
-| **C** | Owned honeypot AP + client-behavior classifier | Next |
-| **D** | Concept-drift / continual baseline | Pending |
+| **C** | Owned honeypot AP + client-behavior classifier | **Done** |
+| **D** | Concept-drift / continual baseline | Next |
 | **E** | Detector adversarial stress suite + threshold autotune | Pending |
 
 See [INTERVIEW_BRIEF.md](INTERVIEW_BRIEF.md) for hiring framing.
