@@ -152,8 +152,34 @@
     };
   }
 
+  async function refreshEvalBadge() {
+    const el = $("#eval-badge");
+    if (!el) return;
+    try {
+      const res = await fetch("/api/eval");
+      const e = await res.json();
+      if (!e.available) {
+        el.textContent = "Eval: run make eval";
+        el.className = "eval-badge missing";
+        return;
+      }
+      const pass = Math.round((e.scenario_pass_rate || 0) * 100);
+      const auc = e.isolation_forest_roc_auc;
+      el.textContent = `Lab validation · scenarios ${pass}% · IF AUC ${auc}`;
+      el.className =
+        pass >= 100 && auc != null && auc >= 0.8
+          ? "eval-badge ok"
+          : "eval-badge warn";
+      el.title = `source: ${e.source || "metrics.json"}`;
+    } catch (_) {
+      el.textContent = "Eval: —";
+      el.className = "eval-badge missing";
+    }
+  }
+
   bootstrap();
   connectSSE();
+  refreshEvalBadge();
   setInterval(refreshStats, 3000);
   setInterval(() => {
     fetch("/api/inventory").then((r) => r.json()).then(renderInventory).catch(() => {});

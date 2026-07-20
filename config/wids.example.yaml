@@ -50,3 +50,10 @@ store:
 
 alerts:
   dedup_seconds: 60            # suppress identical alerts within this window
+  # Known-noisy lab BSSIDs / alert types (optional SOC polish)
+  suppress_bssids: []
+  # suppress_ssids: ["Guest_Noisy"]
+  suppress_types: []
+  # severity_overrides:
+  #   anomaly: low
+  #   deauth_flood: high

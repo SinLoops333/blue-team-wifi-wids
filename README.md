@@ -24,7 +24,7 @@ hit allowlisted gear you own, with RoE + CONFIRM gates and full audit logs.
 | End session + report | `python -m src.engagement_main end` |
 
 **Detectors:** deauth flood, evil twin, encryption downgrade, KARMA, PMKID,
-handshake harvest, IsolationForest anomaly.
+handshake harvest, IsolationForest anomaly (eval also compares One-Class SVM).
 
 **Simulations:** `evil_twin`, `karma`, `deauth`, `encryption_downgrade`,
 `pmkid`, `handshake_harvest`, `all`.
@@ -39,24 +39,25 @@ handshake harvest, IsolationForest anomaly.
 | **KARMA** | One BSSID answers / beacons many distinct SSIDs |
 | **PMKID harvest** | EAPOL frame carrying an RSN PMKID KDE |
 | **Handshake harvest** | Deauth shortly followed by EAPOL |
-| **Anomaly (ML)** | `IsolationForest` over windowed per-BSSID features |
+| **Anomaly (ML)** | IsolationForest + feature attribution; OCSVM compared in eval |
 
 ## Layout
 
 ```
 wids/
-├── config/wids.example.yaml
+├── config/*.example.yaml
 ├── src/
 │   ├── capture/          # SSH + live/offline sniffer
 │   ├── detect/           # features, signatures, baseline, anomaly
-│   ├── alerts/           # Alert model + sqlite store
-│   ├── dashboard/        # Flask + SSE UI
-│   ├── config.py
+│   ├── alerts/           # Alert model, policy, sqlite store
+│   ├── eval/             # labeled scenarios, metrics, model compare
+│   ├── dashboard/        # Flask + SSE UI + lab-validation badge
+│   ├── lab/              # scoped RF + simulations
+│   ├── engagement/       # RoE sessions + reports
 │   └── main.py
+├── docs/                 # model card, threat model, architecture, case study
 ├── tests/
-├── models/               # baseline.pkl, ap_inventory.json (generated)
-├── data/                 # events.db, captures/
-└── requirements.txt
+└── .github/workflows/ci.yml
 ```
 
 ## Setup
@@ -104,6 +105,9 @@ source .venv/bin/activate
 # Live capture + dashboard (http://127.0.0.1:8080)
 python -m src.main
 
+# Structured JSON logs (SOC / pipeline friendly)
+python -m src.main --json-logs
+
 # Offline analysis of a pcap (no Pineapple needed)
 python -m src.main --offline data/captures/sample.pcap
 
@@ -133,17 +137,17 @@ pytest -q
 
 ## Documentation
 
+- [Architecture](docs/ARCHITECTURE.md) — pipeline diagram
+- [Case study](docs/CASE_STUDY.md) — problem → design → metrics → ethics
 - [Model card](docs/MODEL_CARD.md) — training, metrics, limitations, ethics
 - [Threat model](docs/THREAT_MODEL.md) — assets, adversaries, controls
+- [Sample eval metrics](docs/sample_metrics.json) — sanitized lab numbers
 - [Wi-Fi attack vectors ↔ WIDS detectors](docs/attacks/README.md)
-  - [Deauth / disassoc](docs/attacks/deauth.md)
-  - [Evil twin & KARMA](docs/attacks/evil_twin_and_karma.md)
-  - [PMKID & handshake harvest](docs/attacks/pmkid_and_handshake.md)
 
 ## Evaluation & CI (portfolio)
 
 ```bash
-# Labeled signature metrics + IsolationForest ROC-AUC
+# Signatures P/R/F1 + IsolationForest vs One-Class SVM + deauth threshold sweep
 python -m src.eval_main
 # → data/reports/eval/report.md  and  metrics.json
 
@@ -151,7 +155,12 @@ make demo    # pytest + eval + simulate all + offline WIDS
 make test
 ```
 
-GitHub Actions: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs `pytest` and the eval harness on every push/PR (init git in this `wids/` folder so Actions picks up `.github/`).
+Dashboard shows a **lab validation** badge from the latest eval (or
+`docs/sample_metrics.json` fallback). Alert policy supports `suppress_bssids` /
+`suppress_types` and `severity_score` in `config/wids.yaml`.
+
+GitHub Actions: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs
+`pytest` and the eval harness on every push/PR.
 
 ## Phase 2 — Isolated lab (owned targets only)
 

@@ -5,7 +5,12 @@ from __future__ import annotations
 from src.config import Config
 from src.eval.dataset import build_scenarios
 from src.eval.metrics import BinaryScores, scores_for_label
-from src.eval.runner import evaluate_isolation_forest, evaluate_signatures, run_full_eval
+from src.eval.runner import (
+    evaluate_anomaly_models,
+    evaluate_isolation_forest,
+    evaluate_signatures,
+    run_full_eval,
+)
 
 
 def test_binary_scores_f1():
@@ -45,6 +50,14 @@ def test_isolation_forest_auc():
     assert result["roc_auc"] >= 0.9
 
 
+def test_anomaly_models_compare():
+    am = evaluate_anomaly_models()
+    assert am["isolation_forest"]["roc_auc"] >= 0.9
+    assert am["one_class_svm"]["roc_auc"] >= 0.8
+    assert am["winner"] in ("isolation_forest", "one_class_svm")
+    assert am["example_attack_attribution"]
+
+
 def test_full_eval_keys(config):
     config.detectors["deauth"] = {
         "window_seconds": 10,
@@ -52,4 +65,8 @@ def test_full_eval_keys(config):
         "ignore_broadcast_source": True,
     }
     out = run_full_eval(config)
-    assert "signatures" in out and "isolation_forest" in out
+    assert "signatures" in out
+    assert "isolation_forest" in out
+    assert "anomaly_models" in out
+    assert "deauth_threshold_sweep" in out
+    assert out["anomaly_models"]["one_class_svm"]["roc_auc"] > 0

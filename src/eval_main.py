@@ -54,9 +54,13 @@ def main(argv: list[str] | None = None) -> int:
     print(md)
     sig = result["signatures"]
     iso = result["isolation_forest"]
+    am = result.get("anomaly_models") or {}
+    svm = am.get("one_class_svm") or {}
     print(
         f"\nSummary: scenario_pass={sig['scenario_pass_rate']:.0%}  "
-        f"IF_ROC_AUC={iso['roc_auc']}"
+        f"IF_ROC_AUC={iso['roc_auc']}  "
+        f"OCSVM_ROC_AUC={svm.get('roc_auc')}  "
+        f"winner={am.get('winner')}"
     )
     # Non-zero exit if any scenario failed (CI gate)
     if sig["scenario_pass_rate"] < 1.0:

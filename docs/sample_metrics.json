@@ -1,0 +1,220 @@
+{
+  "generated_at": 1784582756.5068226,
+  "note": "Sanitized sample for portfolio; regenerate with python -m src.eval_main",
+  "signatures": {
+    "scenario_pass_rate": 1.0,
+    "per_alert_type": {
+      "deauth_flood": {
+        "tp": 1,
+        "fp": 0,
+        "tn": 7,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support_positive": 1
+      },
+      "evil_twin": {
+        "tp": 1,
+        "fp": 0,
+        "tn": 7,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support_positive": 1
+      },
+      "encryption_downgrade": {
+        "tp": 1,
+        "fp": 0,
+        "tn": 7,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support_positive": 1
+      },
+      "karma": {
+        "tp": 1,
+        "fp": 0,
+        "tn": 7,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support_positive": 1
+      },
+      "pmkid_harvest": {
+        "tp": 1,
+        "fp": 0,
+        "tn": 7,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support_positive": 1
+      },
+      "handshake_harvest": {
+        "tp": 1,
+        "fp": 0,
+        "tn": 7,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support_positive": 1
+      }
+    }
+  },
+  "isolation_forest": {
+    "n_train_benign": 50,
+    "n_test_benign": 30,
+    "n_test_attack": 40,
+    "roc_auc": 1.0,
+    "at_default_threshold": {
+      "tp": 40,
+      "fp": 8,
+      "tn": 22,
+      "fn": 0,
+      "precision": 0.8333,
+      "recall": 1.0,
+      "f1": 0.9091,
+      "support_positive": 40
+    },
+    "mean_anomaly_score_benign": -0.0188,
+    "mean_anomaly_score_attack": 0.0434
+  },
+  "anomaly_models": {
+    "n_train_benign": 50,
+    "n_test_benign": 30,
+    "n_test_attack": 40,
+    "isolation_forest": {
+      "roc_auc": 1.0,
+      "at_default_threshold": {
+        "tp": 40,
+        "fp": 8,
+        "tn": 22,
+        "fn": 0,
+        "precision": 0.8333,
+        "recall": 1.0,
+        "f1": 0.9091,
+        "support_positive": 40
+      },
+      "mean_anomaly_score_benign": -0.0188,
+      "mean_anomaly_score_attack": 0.0434
+    },
+    "one_class_svm": {
+      "roc_auc": 1.0,
+      "at_default_threshold": {
+        "tp": 40,
+        "fp": 11,
+        "tn": 19,
+        "fn": 0,
+        "precision": 0.7843,
+        "recall": 1.0,
+        "f1": 0.8791,
+        "support_positive": 40
+      },
+      "mean_anomaly_score_benign": -0.0172,
+      "mean_anomaly_score_attack": 0.3776
+    },
+    "winner": "isolation_forest",
+    "example_attack_attribution": [
+      {
+        "feature": "deauth_count",
+        "delta": 58.0,
+        "value": 58.0,
+        "baseline_mean": 0.0
+      },
+      {
+        "feature": "probe_resp_count",
+        "delta": 44.9705,
+        "value": 44.9705,
+        "baseline_mean": 0.0
+      },
+      {
+        "feature": "unique_clients",
+        "delta": 19.1475,
+        "value": 19.1475,
+        "baseline_mean": 0.0
+      },
+      {
+        "feature": "eapol_count",
+        "delta": 18.0,
+        "value": 18.0,
+        "baseline_mean": 0.0
+      },
+      {
+        "feature": "disassoc_count",
+        "delta": 18.0,
+        "value": 18.0,
+        "baseline_mean": 0.0
+      }
+    ]
+  },
+  "deauth_threshold_sweep": {
+    "sweep": [
+      {
+        "threshold": 5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "fpr": 0.0,
+        "tp": 1,
+        "fp": 0,
+        "fn": 0
+      },
+      {
+        "threshold": 10,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "fpr": 0.0,
+        "tp": 1,
+        "fp": 0,
+        "fn": 0
+      },
+      {
+        "threshold": 15,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "fpr": 0.0,
+        "tp": 1,
+        "fp": 0,
+        "fn": 0
+      },
+      {
+        "threshold": 20,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "fpr": 0.0,
+        "tp": 1,
+        "fp": 0,
+        "fn": 0
+      },
+      {
+        "threshold": 30,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "fpr": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 1
+      },
+      {
+        "threshold": 40,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "fpr": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 1
+      }
+    ],
+    "recommended_threshold": 5
+  }
+}

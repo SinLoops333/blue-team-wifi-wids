@@ -23,6 +23,7 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from src.alerts.alert import AlertDeduper
+from src.alerts.policy import AlertPolicy
 from src.alerts.store import EventStore
 from src.capture.live_sniffer import LiveSniffer
 from src.capture.pineapple_ssh import PineappleSSH
@@ -32,11 +33,8 @@ from src.detect.anomaly import AnomalyDetector
 from src.detect.baseline import BaselineStore
 from src.detect.frame_features import FeatureExtractor, parse_frame
 from src.detect.signatures import SignatureEngine
+from src.logging_setup import configure_logging, log_alert
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
 logger = logging.getLogger("wids")
 
 
@@ -80,6 +78,7 @@ class WIDSEngine:
 
         dedup_s = float(config.alerts.get("dedup_seconds", 60))
         self.deduper = AlertDeduper(dedup_seconds=dedup_s)
+        self.policy = AlertPolicy.from_config(config.alerts)
 
         self._ssh: PineappleSSH | None = None
         self._sniffer: LiveSniffer | None = None
@@ -88,15 +87,13 @@ class WIDSEngine:
 
     def _emit(self, alerts) -> None:
         for alert in alerts:
-            if not self.deduper.should_emit(alert):
+            filtered = self.policy.filter(alert)
+            if filtered is None:
                 continue
-            self.store.insert_alert(alert)
-            logger.warning(
-                "ALERT [%s] %s — %s",
-                alert.severity.value if hasattr(alert.severity, "value") else alert.severity,
-                alert.title,
-                alert.evidence,
-            )
+            if not self.deduper.should_emit(filtered):
+                continue
+            self.store.insert_alert(filtered)
+            log_alert(logger, filtered.to_dict())
 
     def on_frame(self, pkt) -> None:
         event = parse_frame(pkt)
@@ -248,11 +245,17 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="After offline pcap finishes, keep dashboard up until Ctrl+C",
     )
+    p.add_argument(
+        "--json-logs",
+        action="store_true",
+        help="Emit structured JSON logs (SOC / pipeline friendly)",
+    )
     return p
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    configure_logging(json_logs=args.json_logs)
     if args.config:
         config = Config(yaml_path=Path(args.config))
     else:

@@ -19,7 +19,9 @@ This is **not** an autonomous offensive agent.
 |---|---|---|
 | Signature engine | Deterministic rules | deauth flood, evil twin, encryption downgrade, KARMA, PMKID, handshake harvest |
 | Feature vectors | Hand-crafted per-BSSID windows | beacon/probe/deauth/EAPOL counts, SSID diversity, RSSI |
-| Anomaly model | `sklearn.ensemble.IsolationForest` | Flags unusual window vectors vs quiet baseline |
+| Anomaly model | `IsolationForest` (runtime) | Flags unusual window vectors vs quiet baseline |
+| Model compare (eval) | `OneClassSVM` | Side-by-side ROC-AUC in eval harness |
+| Attribution | Centroid z-deviation | Top features explaining “why anomalous” |
 | Scaler | `StandardScaler` | Fit on quiet training windows |
 
 **Inputs:** Parsed 802.11 management/EAPOL features (not full payloads beyond IE/EAPOL heuristics).  

@@ -9,9 +9,10 @@ import numpy as np
 from sklearn.ensemble import IsolationForest
 from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import StandardScaler
+from sklearn.svm import OneClassSVM
 
 from ..config import Config
-from ..detect.frame_features import FeatureExtractor, parse_frame
+from ..detect.frame_features import FeatureExtractor, WindowFeatures, parse_frame
 from ..detect.signatures import SignatureEngine
 from .dataset import (
     Scenario,
@@ -19,8 +20,8 @@ from .dataset import (
     benign_window_vectors,
     build_scenarios,
 )
-from .metrics import BinaryScores, multilabel_alert_scores, scores_for_label
-
+from .explain import FEATURE_NAMES, top_feature_contributions
+from .metrics import multilabel_alert_scores, scores_for_label
 
 ALERT_TYPES = [
     "deauth_flood",
@@ -33,9 +34,7 @@ ALERT_TYPES = [
 
 
 def _run_scenario(cfg: Config, scenario: Scenario) -> Set[str]:
-    """Fresh engine per scenario so state does not leak."""
     engine = SignatureEngine(cfg)
-    # Seed known-good map for evil-twin / downgrade (owned AP)
     engine.load_baseline_inventory(
         {
             "00:13:37:a9:43:43": {
@@ -45,8 +44,6 @@ def _run_scenario(cfg: Config, scenario: Scenario) -> Set[str]:
             }
         }
     )
-    # Lower karma / deauth thresholds already set via cfg in tests; use production
-    # defaults from config but ensure deauth threshold is reachable (25 frames).
     extractor = FeatureExtractor(window_seconds=60)
     predicted: Set[str] = set()
     t0 = time.time()
@@ -62,7 +59,6 @@ def _run_scenario(cfg: Config, scenario: Scenario) -> Set[str]:
 
 def evaluate_signatures(cfg: Config) -> Dict[str, Any]:
     scenarios = build_scenarios()
-    # Use a deauth threshold of 20 for eval consistency with production defaults
     cfg.detectors = dict(cfg.detectors)
     cfg.detectors["deauth"] = {
         **(cfg.detectors.get("deauth") or {}),
@@ -84,7 +80,6 @@ def evaluate_signatures(cfg: Config) -> Dict[str, Any]:
         expected_sets.append(sc.expected_alerts)
         predicted_sets.append(pred)
         hit = sc.expected_alerts <= pred if sc.expected_alerts else (len(pred) == 0)
-        # For benign: success if no attack alerts (ignore anomaly — not run here)
         if sc.label == "benign":
             hit = len(pred & set(ALERT_TYPES)) == 0
         rows.append(
@@ -107,49 +102,134 @@ def evaluate_signatures(cfg: Config) -> Dict[str, Any]:
     }
 
 
-def evaluate_isolation_forest(random_state: int = 42) -> Dict[str, Any]:
-    """Train on benign windows; score benign vs attack; report ROC-AUC + F1."""
+def _score_model(model, X_test, y_true) -> Dict[str, Any]:
+    scores = -model.decision_function(X_test)
+    preds = (model.predict(X_test) == -1).astype(int)
+    auc = float(roc_auc_score(y_true, scores))
+    binary = scores_for_label(y_true.tolist(), preds.tolist())
+    n_benign = int((y_true == 0).sum())
+    return {
+        "roc_auc": round(auc, 4),
+        "at_default_threshold": binary.to_dict(),
+        "mean_anomaly_score_benign": round(float(scores[:n_benign].mean()), 4),
+        "mean_anomaly_score_attack": round(float(scores[n_benign:].mean()), 4),
+    }
+
+
+def evaluate_anomaly_models(random_state: int = 42) -> Dict[str, Any]:
+    """Compare IsolationForest vs One-Class SVM + feature attributions."""
     X_benign = np.array(benign_window_vectors(80), dtype=float)
     X_attack = np.array(attack_window_vectors(40), dtype=float)
 
     scaler = StandardScaler()
     X_train = scaler.fit_transform(X_benign[:50])
-    model = IsolationForest(
-        contamination=0.05, random_state=random_state, n_estimators=200
-    )
-    model.fit(X_train)
-
     X_test_benign = scaler.transform(X_benign[50:])
     X_test_attack = scaler.transform(X_attack)
     X_test = np.vstack([X_test_benign, X_test_attack])
     y_true = np.array([0] * len(X_test_benign) + [1] * len(X_test_attack))
+    train_mean = X_train.mean(axis=0)
 
-    scores = -model.decision_function(X_test)
-    preds = (model.predict(X_test) == -1).astype(int)
+    iso = IsolationForest(
+        contamination=0.05, random_state=random_state, n_estimators=200
+    )
+    iso.fit(X_train)
 
-    auc = float(roc_auc_score(y_true, scores))
-    binary = scores_for_label(y_true.tolist(), preds.tolist())
+    ocsvm = OneClassSVM(kernel="rbf", gamma="scale", nu=0.05)
+    ocsvm.fit(X_train)
+
+    iso_metrics = _score_model(iso, X_test, y_true)
+    svm_metrics = _score_model(ocsvm, X_test, y_true)
+
+    # Example attribution on first attack sample
+    attack0 = X_test_attack[0]
+    contribs = top_feature_contributions(attack0, train_mean, top_k=5)
 
     return {
         "n_train_benign": int(len(X_train)),
         "n_test_benign": int(len(X_test_benign)),
         "n_test_attack": int(len(X_test_attack)),
-        "roc_auc": round(auc, 4),
-        "at_default_threshold": binary.to_dict(),
-        "mean_anomaly_score_benign": round(
-            float(scores[: len(X_test_benign)].mean()), 4
-        ),
-        "mean_anomaly_score_attack": round(
-            float(scores[len(X_test_benign) :].mean()), 4
+        "feature_names": FEATURE_NAMES,
+        "isolation_forest": iso_metrics,
+        "one_class_svm": svm_metrics,
+        "example_attack_attribution": contribs,
+        "winner": (
+            "isolation_forest"
+            if iso_metrics["roc_auc"] >= svm_metrics["roc_auc"]
+            else "one_class_svm"
         ),
     }
 
 
+def deauth_threshold_sweep(cfg: Config) -> Dict[str, Any]:
+    """Measure deauth detector TPR/FPR across thresholds on synthetic scenarios."""
+    scenarios = build_scenarios()
+    rows = []
+    for thr in [5, 10, 15, 20, 30, 40]:
+        cfg.detectors = dict(cfg.detectors)
+        cfg.detectors["deauth"] = {
+            "window_seconds": 10,
+            "threshold": thr,
+            "ignore_broadcast_source": True,
+        }
+        cfg.detectors["karma"] = {
+            "window_seconds": 60,
+            "min_ssids_per_bssid": 5,
+        }
+        y_true = []
+        y_pred = []
+        for sc in scenarios:
+            pred = _run_scenario(cfg, sc)
+            truth = 1 if "deauth_flood" in sc.expected_alerts else 0
+            guess = 1 if "deauth_flood" in pred else 0
+            y_true.append(truth)
+            y_pred.append(guess)
+        scores = scores_for_label(y_true, y_pred)
+        # FPR among negatives
+        negatives = sum(1 for t in y_true if t == 0)
+        fpr = scores.fp / negatives if negatives else 0.0
+        rows.append(
+            {
+                "threshold": thr,
+                "precision": round(scores.precision, 4),
+                "recall": round(scores.recall, 4),
+                "f1": round(scores.f1, 4),
+                "fpr": round(fpr, 4),
+                "tp": scores.tp,
+                "fp": scores.fp,
+                "fn": scores.fn,
+            }
+        )
+    # Prefer high recall with zero FPR, else best F1
+    zero_fpr = [r for r in rows if r["fpr"] == 0 and r["recall"] > 0]
+    recommended = max(zero_fpr or rows, key=lambda r: (r["f1"], r["recall"]))
+    return {"sweep": rows, "recommended_threshold": recommended["threshold"]}
+
+
+def evaluate_isolation_forest(random_state: int = 42) -> Dict[str, Any]:
+    """Back-compat wrapper returning IsolationForest block with dataset sizes."""
+    am = evaluate_anomaly_models(random_state=random_state)
+    return {
+        "n_train_benign": am["n_train_benign"],
+        "n_test_benign": am["n_test_benign"],
+        "n_test_attack": am["n_test_attack"],
+        **am["isolation_forest"],
+    }
+
+
 def run_full_eval(cfg: Config) -> Dict[str, Any]:
+    anomaly = evaluate_anomaly_models()
     return {
         "generated_at": time.time(),
         "signatures": evaluate_signatures(cfg),
-        "isolation_forest": evaluate_isolation_forest(),
+        "anomaly_models": anomaly,
+        # Back-compat key used by older tests / docs
+        "isolation_forest": {
+            "n_train_benign": anomaly["n_train_benign"],
+            "n_test_benign": anomaly["n_test_benign"],
+            "n_test_attack": anomaly["n_test_attack"],
+            **anomaly["isolation_forest"],
+        },
+        "deauth_threshold_sweep": deauth_threshold_sweep(cfg),
     }
 
 
@@ -188,26 +268,56 @@ def report_markdown(result: Dict[str, Any]) -> str:
             f"{m['support_positive']} |"
         )
 
-    iso = result["isolation_forest"]
+    am = result.get("anomaly_models") or {}
+    iso = am.get("isolation_forest") or result.get("isolation_forest") or {}
+    svm = am.get("one_class_svm") or {}
     lines += [
         "",
-        "## IsolationForest anomaly model",
+        "## Anomaly models (IsolationForest vs One-Class SVM)",
         "",
-        f"- Train benign windows: {iso['n_train_benign']}",
-        f"- Test benign / attack: {iso['n_test_benign']} / {iso['n_test_attack']}",
-        f"- **ROC-AUC:** {iso['roc_auc']}",
-        f"- Mean anomaly score (benign): {iso['mean_anomaly_score_benign']}",
-        f"- Mean anomaly score (attack): {iso['mean_anomaly_score_attack']}",
-        f"- At default threshold — P/R/F1: "
-        f"{iso['at_default_threshold']['precision']:.2f} / "
-        f"{iso['at_default_threshold']['recall']:.2f} / "
-        f"{iso['at_default_threshold']['f1']:.2f}",
+        f"| Model | ROC-AUC | P | R | F1 |",
+        f"|---|---:|---:|---:|---:|",
+        f"| IsolationForest | {iso.get('roc_auc')} | "
+        f"{iso.get('at_default_threshold', {}).get('precision')} | "
+        f"{iso.get('at_default_threshold', {}).get('recall')} | "
+        f"{iso.get('at_default_threshold', {}).get('f1')} |",
+        f"| One-Class SVM | {svm.get('roc_auc')} | "
+        f"{svm.get('at_default_threshold', {}).get('precision')} | "
+        f"{svm.get('at_default_threshold', {}).get('recall')} | "
+        f"{svm.get('at_default_threshold', {}).get('f1')} |",
+        "",
+        f"Winner (ROC-AUC): **{am.get('winner', 'isolation_forest')}**",
+        "",
+        "### Example attack feature attribution (z-dev from benign mean)",
+        "",
+    ]
+    for c in am.get("example_attack_attribution") or []:
+        lines.append(
+            f"- `{c['feature']}`: delta={c['delta']} "
+            f"(value={c['value']}, baseline={c['baseline_mean']})"
+        )
+
+    sweep = result.get("deauth_threshold_sweep") or {}
+    lines += [
+        "",
+        "## Deauth threshold sweep",
+        "",
+        f"Recommended threshold: **{sweep.get('recommended_threshold')}**",
+        "",
+        "| Threshold | P | R | F1 | FPR |",
+        "|---:|---:|---:|---:|---:|",
+    ]
+    for r in sweep.get("sweep") or []:
+        lines.append(
+            f"| {r['threshold']} | {r['precision']:.2f} | {r['recall']:.2f} | "
+            f"{r['f1']:.2f} | {r['fpr']:.2f} |"
+        )
+    lines += [
         "",
         "## Notes",
         "",
         "- Metrics use **synthetic labeled scenarios** (not third-party live RF).",
-        "- Signature eval is scenario-level presence of alert types.",
-        "- IsolationForest is trained only on synthetic benign windows.",
+        "- Feature attribution is centroid z-deviation (lightweight SHAP-style).",
         "",
     ]
     return "\n".join(lines)

@@ -12,6 +12,7 @@ from sklearn.ensemble import IsolationForest
 
 from ..alerts.alert import Alert, AlertSeverity
 from ..config import Config
+from ..eval.explain import format_contributions, top_feature_contributions
 from .baseline import BaselineStore
 from .frame_features import WindowFeatures, is_real_bssid
 
@@ -32,6 +33,7 @@ class AnomalyDetector:
             config.anomaly.get("model_path", "models/baseline.pkl")
         )
         self._windows_seen = 0
+        self._train_mean_scaled: Optional[np.ndarray] = None
 
     def load(self) -> None:
         if not self.model_path.exists():
@@ -41,6 +43,9 @@ class AnomalyDetector:
         self.model = blob.get("isolation_forest")
         if blob.get("scaler") is not None:
             self.baseline.scaler = blob["scaler"]
+        mean = blob.get("train_mean_scaled")
+        if mean is not None:
+            self._train_mean_scaled = np.asarray(mean, dtype=float)
         logger.info("Loaded IsolationForest from %s", self.model_path)
 
     def save(self) -> None:
@@ -48,6 +53,11 @@ class AnomalyDetector:
         blob = {
             "isolation_forest": self.model,
             "scaler": self.baseline.scaler,
+            "train_mean_scaled": (
+                self._train_mean_scaled.tolist()
+                if self._train_mean_scaled is not None
+                else None
+            ),
         }
         with open(self.model_path, "wb") as f:
             pickle.dump(blob, f)
@@ -70,6 +80,7 @@ class AnomalyDetector:
         self.baseline.fit_scaler(min_samples=self.min_train)
         assert self.baseline.scaler is not None
         X = self.baseline.scaler.transform(matrix)
+        self._train_mean_scaled = X.mean(axis=0)
         self.model = IsolationForest(
             contamination=self.contamination,
             random_state=42,
@@ -94,6 +105,16 @@ class AnomalyDetector:
             pred = self.model.predict(scaled)[0]  # -1 = anomaly
             score = float(self.model.decision_function(scaled)[0])
             if pred == -1:
+                contribs = []
+                if self._train_mean_scaled is not None:
+                    contribs = top_feature_contributions(
+                        scaled.ravel(), self._train_mean_scaled, top_k=5
+                    )
+                why = (
+                    f" top_features={format_contributions(contribs)}"
+                    if contribs
+                    else ""
+                )
                 alerts.append(
                     Alert(
                         alert_type="anomaly",
@@ -103,7 +124,7 @@ class AnomalyDetector:
                             f"BSSID {w.bssid} window looks anomalous "
                             f"(score={score:.3f}); "
                             f"deauth={w.deauth_count} eapol={w.eapol_count} "
-                            f"ssids={w.unique_ssids}"
+                            f"ssids={w.unique_ssids}{why}"
                         ),
                         bssid=w.bssid,
                         ssid=w.ssids[0] if w.ssids else None,
@@ -112,6 +133,7 @@ class AnomalyDetector:
                         metadata={
                             "score": score,
                             "vector": w.as_vector(),
+                            "feature_contributions": contribs,
                         },
                     )
                 )

@@ -12,6 +12,7 @@ from flask import Flask, Response, jsonify, render_template, request
 
 from ..alerts.alert import Alert
 from ..alerts.store import EventStore
+from ..config import PROJECT_ROOT
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
@@ -61,6 +62,33 @@ def create_app(store: EventStore) -> Flask:
     @app.route("/api/stats")
     def api_stats():
         return jsonify(store.get_stats())
+
+    @app.route("/api/eval")
+    def api_eval():
+        """Latest eval metrics badge (from data/reports/eval/metrics.json)."""
+        path = PROJECT_ROOT / "data" / "reports" / "eval" / "metrics.json"
+        sample = PROJECT_ROOT / "docs" / "sample_metrics.json"
+        for candidate in (path, sample):
+            if candidate.exists():
+                data = json.loads(candidate.read_text(encoding="utf-8"))
+                sig = data.get("signatures") or {}
+                iso = data.get("isolation_forest") or {}
+                am = data.get("anomaly_models") or {}
+                if not iso and am:
+                    iso = am.get("isolation_forest") or {}
+                return jsonify(
+                    {
+                        "available": True,
+                        "scenario_pass_rate": sig.get("scenario_pass_rate"),
+                        "isolation_forest_roc_auc": iso.get("roc_auc"),
+                        "ocsvm_roc_auc": (am.get("one_class_svm") or {}).get("roc_auc"),
+                        "deauth_recommended_threshold": (
+                            data.get("deauth_threshold_sweep") or {}
+                        ).get("recommended_threshold"),
+                        "source": str(candidate.relative_to(PROJECT_ROOT)),
+                    }
+                )
+        return jsonify({"available": False})
 
     @app.route("/api/events/stream")
     def api_stream():
