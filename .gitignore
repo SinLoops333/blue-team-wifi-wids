@@ -3,7 +3,6 @@
 config/wids.yaml
 config/lab.yaml
 config/engagement.yaml
-data/reports/
 
 # Python
 __pycache__/
@@ -21,7 +20,10 @@ venv/
 # Data and models (generated)
 data/captures/*.pcap
 data/logs/*.log
+data/logs/*.jsonl
+data/logs/engagement_session.json
 data/*.db
+data/reports/
 models/*.pkl
 !models/.gitkeep
 !data/captures/.gitkeep
