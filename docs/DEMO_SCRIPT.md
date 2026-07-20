@@ -54,13 +54,16 @@ make eval
 # optional: open data/reports/eval/report.md in the editor
 ```
 
-**Segment B — simulate + dashboard**
+**Segment B — simulate + dashboard (live-looking replay)**
 
 ```bash
 python -m src.lab_main --simulate all --yes
-python -m src.main --offline data/captures/lab_simulated.pcap --keep-dashboard
+# Loops the pcap so the terminal keeps printing ALERTs (not a frozen idle)
+python -m src.main --offline data/captures/lab_simulated.pcap --replay-loop --replay-delay 0.2
 # Browser: http://127.0.0.1:8080
 ```
+
+Or one shot: `make prep-demo`
 
 **Segment C — live lab (optional)**
 

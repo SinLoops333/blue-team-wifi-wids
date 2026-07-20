@@ -84,6 +84,7 @@ class WIDSEngine:
         self._sniffer: LiveSniffer | None = None
         self._last_window_eval = 0.0
         self._frames_since_stats = 0
+        self._replay_wallclock = False
 
     def _emit(self, alerts) -> None:
         for alert in alerts:
@@ -96,7 +97,8 @@ class WIDSEngine:
             log_alert(logger, filtered.to_dict())
 
     def on_frame(self, pkt) -> None:
-        event = parse_frame(pkt)
+        ts = time.time() if self._replay_wallclock else None
+        event = parse_frame(pkt, timestamp=ts)
         if event is None:
             return
         self.extractor.ingest(event)
@@ -138,16 +140,38 @@ class WIDSEngine:
         t.start()
         return t
 
-    def run(self, offline_pcap: str | None = None, no_dashboard: bool = False) -> None:
+    def run(
+        self,
+        offline_pcap: str | None = None,
+        no_dashboard: bool = False,
+        *,
+        replay_loop: bool = False,
+        replay_delay: float = 0.0,
+    ) -> None:
         self.running = True
         if not no_dashboard:
             self.start_dashboard()
 
         if offline_pcap:
             self._sniffer = LiveSniffer()
-            logger.info("Offline mode: %s", offline_pcap)
+            if replay_loop:
+                # Re-emit alerts each pass so the terminal/dashboard stay lively
+                self.deduper = AlertDeduper(dedup_seconds=2.0)
+                self._replay_wallclock = True
+                logger.info(
+                    "Replay loop: %s (delay=%.2fs between frames, Ctrl+C to stop)",
+                    offline_pcap,
+                    replay_delay,
+                )
+            else:
+                logger.info("Offline mode: %s", offline_pcap)
             try:
-                self._sniffer.run(self.on_frame, offline_pcap=offline_pcap)
+                self._sniffer.run(
+                    self.on_frame,
+                    offline_pcap=offline_pcap,
+                    replay_loop=replay_loop,
+                    replay_delay=replay_delay,
+                )
             finally:
                 self._finalize()
             return
@@ -246,6 +270,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="After offline pcap finishes, keep dashboard up until Ctrl+C",
     )
     p.add_argument(
+        "--replay-loop",
+        action="store_true",
+        help="With --offline: loop the pcap forever (demo / recording)",
+    )
+    p.add_argument(
+        "--replay-delay",
+        type=float,
+        default=0.15,
+        metavar="SEC",
+        help="Seconds between frames when --replay-loop (default 0.15)",
+    )
+    p.add_argument(
         "--json-logs",
         action="store_true",
         help="Emit structured JSON logs (SOC / pipeline friendly)",
@@ -261,6 +297,9 @@ def main(argv: list[str] | None = None) -> int:
     else:
         config = get_config()
 
+    if args.replay_loop and not args.offline:
+        raise SystemExit("--replay-loop requires --offline PCAP")
+
     engine = WIDSEngine(
         config,
         train_baseline=args.train_baseline,
@@ -275,8 +314,18 @@ def main(argv: list[str] | None = None) -> int:
     signal.signal(signal.SIGTERM, _sig)
 
     try:
-        engine.run(offline_pcap=args.offline, no_dashboard=args.no_dashboard)
-        if args.offline and args.keep_dashboard and not args.no_dashboard:
+        engine.run(
+            offline_pcap=args.offline,
+            no_dashboard=args.no_dashboard,
+            replay_loop=args.replay_loop,
+            replay_delay=args.replay_delay,
+        )
+        if (
+            args.offline
+            and args.keep_dashboard
+            and not args.no_dashboard
+            and not args.replay_loop
+        ):
             logger.info(
                 "Offline analysis done — dashboard still at http://%s:%s (Ctrl+C to quit)",
                 config.dashboard.get("host", "127.0.0.1"),

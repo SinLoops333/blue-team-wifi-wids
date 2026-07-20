@@ -256,8 +256,10 @@ def parse_frame(pkt: Packet, timestamp: Optional[float] = None) -> Optional[Fram
     dot11 = pkt[Dot11]
     ftype = int(dot11.type)
     subtype = int(dot11.subtype)
-    ts = timestamp if timestamp is not None else time.time()
-    if hasattr(pkt, "time") and pkt.time:
+    ts = time.time()
+    if timestamp is not None:
+        ts = float(timestamp)
+    elif hasattr(pkt, "time") and pkt.time:
         try:
             ts = float(pkt.time)
         except (TypeError, ValueError):

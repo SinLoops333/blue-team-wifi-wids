@@ -16,6 +16,10 @@ python -m src.eval_main
 echo "==> Simulate all attack signatures → pcap"
 python -m src.lab_main --simulate all --yes
 
-echo "==> Offline WIDS + dashboard (Ctrl+C when recording is done)"
-echo "    Open http://127.0.0.1:8080  — follow docs/DEMO_SCRIPT.md"
-exec python -m src.main --offline data/captures/lab_simulated.pcap --keep-dashboard
+echo "==> Offline WIDS replay loop + dashboard (Ctrl+C when recording is done)"
+echo "    Open http://127.0.0.1:8080  — terminal should keep printing ALERTs"
+echo "    Follow docs/DEMO_SCRIPT.md"
+exec python -m src.main \
+  --offline data/captures/lab_simulated.pcap \
+  --replay-loop \
+  --replay-delay 0.2

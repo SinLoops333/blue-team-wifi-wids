@@ -48,15 +48,37 @@ class LiveSniffer:
                 pass
             self._reader = None
 
-    def frames_from_pcap(self, path: Union[str, Path]) -> Iterator[Packet]:
-        """Iterate frames from a local pcap file (offline / test mode)."""
+    def frames_from_pcap(
+        self,
+        path: Union[str, Path],
+        *,
+        loop: bool = False,
+        delay_s: float = 0.0,
+    ) -> Iterator[Packet]:
+        """Iterate frames from a local pcap (optionally slow + looping for demos)."""
         path = Path(path)
-        logger.info("Reading offline pcap: %s", path)
-        with PcapReader(str(path)) as reader:
-            for pkt in reader:
-                if self._stop.is_set():
-                    break
-                yield pkt
+        pass_n = 0
+        while True:
+            pass_n += 1
+            logger.info(
+                "Reading offline pcap: %s%s",
+                path,
+                f" (pass {pass_n})" if loop else "",
+            )
+            n = 0
+            with PcapReader(str(path)) as reader:
+                for pkt in reader:
+                    if self._stop.is_set():
+                        return
+                    n += 1
+                    if delay_s > 0:
+                        # Interruptible sleep so Ctrl+C / stop() wakes promptly
+                        if self._stop.wait(delay_s):
+                            return
+                    yield pkt
+            logger.info("Offline pass %d done (%d frames)", pass_n, n)
+            if not loop or self._stop.is_set():
+                break
 
     def frames_live(self) -> Iterator[Packet]:
         """Iterate frames from a remote tcpdump over SSH."""
@@ -108,10 +130,16 @@ class LiveSniffer:
             self.stop()
 
     def iter_frames(
-        self, offline_pcap: Optional[Union[str, Path]] = None
+        self,
+        offline_pcap: Optional[Union[str, Path]] = None,
+        *,
+        replay_loop: bool = False,
+        replay_delay: float = 0.0,
     ) -> Iterator[Packet]:
         if offline_pcap:
-            yield from self.frames_from_pcap(offline_pcap)
+            yield from self.frames_from_pcap(
+                offline_pcap, loop=replay_loop, delay_s=replay_delay
+            )
         else:
             yield from self.frames_live()
 
@@ -119,10 +147,17 @@ class LiveSniffer:
         self,
         on_frame: FrameCallback,
         offline_pcap: Optional[Union[str, Path]] = None,
+        *,
+        replay_loop: bool = False,
+        replay_delay: float = 0.0,
     ) -> None:
         """Blocking loop: call *on_frame* for every packet until stopped."""
         self._stop.clear()
-        for pkt in self.iter_frames(offline_pcap=offline_pcap):
+        for pkt in self.iter_frames(
+            offline_pcap=offline_pcap,
+            replay_loop=replay_loop,
+            replay_delay=replay_delay,
+        ):
             if self._stop.is_set():
                 break
             try:
