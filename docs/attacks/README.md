@@ -26,6 +26,7 @@ Scope rules: lab targets ⊆ `config/wids.yaml` allowlist. Foreign BSSIDs are re
 | Multi-radio fusion | `radio_ssid_split_view`, `radio_channel_conflict`, `radio_fingerprint_disagreement` | [fusion.md](fusion.md) |
 | Owned honeypot recon | `honeypot_recon_burst`, `honeypot_client_anomaly` | [honeypot.md](honeypot.md) |
 | Concept drift | `baseline_concept_drift` | [drift.md](drift.md) |
+| Stress + autotune | near-threshold suite / recommended thresholds | [stress_autotune.md](stress_autotune.md) |
 | IsolationForest outlier | `anomaly` | (ML baseline; see README) |
 
 ## Code entry points

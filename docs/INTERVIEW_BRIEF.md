@@ -31,6 +31,7 @@ path is receive-only; live RF only hits allowlisted gear I own with CONFIRM.
 5. “Dual-radio fusion on the Mark VII compares pinned vs hopping monitors for SSID split views and IE disagreements.”
 6. “An owned honeypot SSID plus a client IsolationForest separates phone-like probes from automated recon bursts.”
 7. “I monitor PSI on the window-feature baseline and adapt the reference when the RF environment legitimately drifts.”
+8. “I stress-test detectors at the decision boundary and autotune thresholds for max F1 under a measured FPR cap.”
 
 ## Stack
 

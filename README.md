@@ -19,6 +19,7 @@ hit allowlisted gear you own, with RoE + CONFIRM gates and full audit logs.
 | Keep dashboard after offline | `… --offline file.pcap --keep-dashboard` |
 | Train anomaly baseline | `python -m src.main --train-baseline` |
 | Eval harness (P/R/F1, ROC-AUC) | `python -m src.eval_main` / `make eval` |
+| Stress suite + threshold autotune | `python -m src.autotune_main` / `make autotune` |
 | One-command demo | `make demo` |
 | Health check | `python -m src.status_main` |
 | Lab scope list | `python -m src.lab_main --list` |

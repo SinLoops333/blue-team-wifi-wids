@@ -69,4 +69,7 @@ def test_full_eval_keys(config):
     assert "isolation_forest" in out
     assert "anomaly_models" in out
     assert "deauth_threshold_sweep" in out
+    assert "stress_suite" in out
+    assert "autotune" in out
     assert out["anomaly_models"]["one_class_svm"]["roc_auc"] > 0
+    assert out["stress_suite"]["pass_rate"] == 1.0

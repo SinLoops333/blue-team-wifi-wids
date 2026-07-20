@@ -251,6 +251,9 @@ def evaluate_isolation_forest(random_state: int = 42) -> Dict[str, Any]:
 
 
 def run_full_eval(cfg: Config) -> Dict[str, Any]:
+    from .autotune import autotune_thresholds
+    from .stress import run_stress_suite
+
     anomaly = evaluate_anomaly_models()
     return {
         "generated_at": time.time(),
@@ -258,6 +261,8 @@ def run_full_eval(cfg: Config) -> Dict[str, Any]:
         "anomaly_models": anomaly,
         "honeypot_client_model": evaluate_honeypot_model(),
         "concept_drift": evaluate_drift_detection(),
+        "stress_suite": run_stress_suite(cfg),
+        "autotune": autotune_thresholds(cfg, max_fpr=0.0),
         # Back-compat key used by older tests / docs
         "isolation_forest": {
             "n_train_benign": anomaly["n_train_benign"],
@@ -354,6 +359,41 @@ def report_markdown(result: Dict[str, Any]) -> str:
             f"PSI same dist: `{drift.get('psi_same_distribution')}`  ·  "
             f"PSI shifted: **{drift.get('psi_shifted_distribution')}**  ·  "
             f"detects_shift={drift.get('detects_shift')}",
+            "",
+        ]
+
+    stress = result.get("stress_suite") or {}
+    if stress:
+        lines += [
+            "",
+            "## Detector stress suite (near-threshold)",
+            "",
+            f"Pass rate: **{stress.get('pass_rate', 0):.0%}** "
+            f"({stress.get('n_pass')}/{stress.get('n_cases')})",
+            "",
+            "| Case | Expect | Got | Pass | Note |",
+            "|---|---|---|---|---|",
+        ]
+        for row in stress.get("cases") or []:
+            lines.append(
+                f"| {row['name']} | {row['expect_alert']} | {row['got_alert']} | "
+                f"{'yes' if row['pass'] else 'NO'} | {row.get('note', '')} |"
+            )
+
+    auto = result.get("autotune") or {}
+    if auto:
+        rd = auto.get("recommended_deauth") or {}
+        rk = auto.get("recommended_karma") or {}
+        lines += [
+            "",
+            "## Threshold autotune (max FPR = "
+            f"{auto.get('max_fpr', 0)})",
+            "",
+            f"Recommended deauth threshold: **{rd.get('threshold')}** "
+            f"(F1={rd.get('f1')}, FPR={rd.get('fpr')})",
+            "",
+            f"Recommended karma min_ssids: **{rk.get('min_ssids_per_bssid')}** "
+            f"(F1={rk.get('f1')}, FPR={rk.get('fpr')})",
             "",
         ]
 

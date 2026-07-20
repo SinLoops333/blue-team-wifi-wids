@@ -1,11 +1,14 @@
 # WIDS developer shortcuts (run from wids/)
-.PHONY: test eval demo status lint-ci
+.PHONY: test eval demo status lint-ci autotune
 
 test:
 	pytest -q
 
 eval:
 	python -m src.eval_main
+
+autotune:
+	python -m src.autotune_main
 
 demo:
 	python -m src.demo_main
