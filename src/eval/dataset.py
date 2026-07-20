@@ -85,6 +85,53 @@ def build_scenarios() -> List[Scenario]:
             + [sim._eapol_m1(real_bssid, with_pmkid=False)],
         ),
         Scenario(
+            name="beacon_clone_fingerprint",
+            label="beacon_clone",
+            expected_alerts={"beacon_fingerprint_mismatch"},
+            packets=[
+                sim._beacon(
+                    real_bssid, real_ssid, channel=11, open_network=False, tsf=1_000_000 * (i + 1)
+                )
+                for i in range(4)
+            ]
+            + [
+                sim._beacon(
+                    real_bssid,
+                    real_ssid,
+                    channel=11,
+                    open_network=False,
+                    tsf=5_000_000,
+                    extra_vendor_oui=b"\x00\x13\x37",
+                )
+            ],
+        ),
+        Scenario(
+            name="beacon_clone_tsf",
+            label="beacon_clone",
+            expected_alerts={"beacon_tsf_anomaly"},
+            packets=[
+                # TSF +10_000 per eval step (0.01s) ≈ 1e6 ticks/s
+                sim._beacon(
+                    real_bssid,
+                    real_ssid,
+                    channel=11,
+                    open_network=False,
+                    tsf=1_000_000 + 10_000 * i,
+                )
+                for i in range(5)
+            ]
+            + [
+                # Backward jump > 1s of TSF from ~1.04e6 → 100
+                sim._beacon(
+                    real_bssid,
+                    real_ssid,
+                    channel=11,
+                    open_network=False,
+                    tsf=100,
+                )
+            ],
+        ),
+        Scenario(
             name="benign_sparse_beacons",
             label="benign",
             expected_alerts=set(),

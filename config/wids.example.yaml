@@ -5,7 +5,7 @@ capture:
   # Mark VII recon radio is usually wlan1 (already Mode:Monitor).
   # Use "auto" to pick the first monitor-mode iface.
   interface: wlan1
-  snaplen: 256                 # bytes per frame (enough for headers + IEs)
+  snaplen: 512                 # bytes per frame (512+ recommended for IE fingerprints)
   ssh_timeout: 30
   channel: null                # e.g. 11 to pin during Open999 lab tests
 
@@ -25,6 +25,11 @@ detectors:
     ignore_broadcast_source: true
   evil_twin:
     enabled: true
+  beacon_clone:
+    enabled: true
+    stabilize_count: 3       # identical IE fingerprints before lock
+    tsf_min_samples: 4
+    tsf_max_backward_us: 1000000
   karma:
     window_seconds: 60
     min_ssids_per_bssid: 5     # probe responses for this many SSIDs

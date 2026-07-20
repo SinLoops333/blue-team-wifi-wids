@@ -17,6 +17,8 @@ from scapy.all import (  # type: ignore
     RadioTap,
 )
 
+from .fingerprint import extract_beacon_identity
+
 SUBTYPE_ASSOC_REQ = 0
 SUBTYPE_REASSOC_REQ = 2
 SUBTYPE_PROBE_REQ = 4
@@ -57,6 +59,13 @@ class FrameEvent:
     is_eapol: bool = False
     eapol_msg: Optional[int] = None
     raw_len: int = 0
+    # Beacon / probe-resp identity (clone detection)
+    ie_fingerprint: Optional[str] = None
+    ie_ids: Tuple[int, ...] = field(default_factory=tuple)
+    vendor_ouis: Tuple[str, ...] = field(default_factory=tuple)
+    beacon_interval: Optional[int] = None
+    tsf: Optional[int] = None
+    capability: Optional[int] = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -284,11 +293,25 @@ def parse_frame(pkt: Packet, timestamp: Optional[float] = None) -> Optional[Fram
     ssid = None
     channel = None
     encryption = None
+    ie_fingerprint = None
+    ie_ids: Tuple[int, ...] = ()
+    vendor_ouis: Tuple[str, ...] = ()
+    beacon_interval = None
+    tsf = None
+    capability = None
     if name in ("beacon", "probe_resp", "probe_req"):
         ssid = _extract_ssid(pkt)
         channel = _extract_channel(pkt)
         if name in ("beacon", "probe_resp"):
             encryption = _extract_encryption(pkt)
+            ident = extract_beacon_identity(pkt)
+            if ident is not None:
+                ie_fingerprint = ident.fingerprint
+                ie_ids = ident.ie_ids
+                vendor_ouis = ident.vendor_ouis
+                beacon_interval = ident.beacon_interval
+                tsf = ident.tsf
+                capability = ident.capability
 
     return FrameEvent(
         timestamp=ts,
@@ -306,6 +329,12 @@ def parse_frame(pkt: Packet, timestamp: Optional[float] = None) -> Optional[Fram
         is_eapol=is_eapol,
         eapol_msg=eapol_msg,
         raw_len=len(pkt),
+        ie_fingerprint=ie_fingerprint,
+        ie_ids=ie_ids,
+        vendor_ouis=vendor_ouis,
+        beacon_interval=beacon_interval,
+        tsf=tsf,
+        capability=capability,
     )
 
 

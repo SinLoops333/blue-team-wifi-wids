@@ -15,18 +15,33 @@ from scapy.all import (  # type: ignore
 )
 
 
-def make_beacon(bssid: str, ssid: str, channel: int = 6, open_network: bool = False):
+def make_beacon(
+    bssid: str,
+    ssid: str,
+    channel: int = 6,
+    open_network: bool = False,
+    *,
+    tsf: int | None = None,
+    beacon_interval: int = 100,
+    extra_vendor_oui: bytes | None = None,
+):
     cap = 0x0000 if open_network else 0x0411
+    beacon_kwargs = {"cap": cap, "beacon_interval": beacon_interval}
+    if tsf is not None:
+        beacon_kwargs["timestamp"] = tsf
     pkt = (
         RadioTap()
         / Dot11(type=0, subtype=8, addr1="ff:ff:ff:ff:ff:ff", addr2=bssid, addr3=bssid)
-        / Dot11Beacon(cap=cap)
+        / Dot11Beacon(**beacon_kwargs)
         / Dot11Elt(ID="SSID", info=ssid.encode())
         / Dot11Elt(ID="DSset", info=bytes([channel]))
     )
     if not open_network:
         rsn = bytes.fromhex("0100000fac040100000fac040100000fac020000")
         pkt = pkt / Dot11Elt(ID=48, info=rsn)
+    if extra_vendor_oui is not None:
+        # Vendor specific IE (ID 221) with OUI + tag — changes IE fingerprint
+        pkt = pkt / Dot11Elt(ID=221, info=extra_vendor_oui + b"\x01clone")
     return pkt
 
 

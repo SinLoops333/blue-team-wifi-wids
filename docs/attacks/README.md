@@ -22,6 +22,7 @@ Scope rules: lab targets ⊆ `config/wids.yaml` allowlist. Foreign BSSIDs are re
 | KARMA / multi-SSID responder | `karma` | [evil_twin_and_karma.md](evil_twin_and_karma.md) |
 | PMKID in EAPOL | `pmkid_harvest` | [pmkid_and_handshake.md](pmkid_and_handshake.md) |
 | Deauth then EAPOL | `handshake_harvest` | [pmkid_and_handshake.md](pmkid_and_handshake.md) |
+| Same-BSSID IE / TSF clone | `beacon_fingerprint_mismatch`, `beacon_tsf_anomaly` | [beacon_clone.md](beacon_clone.md) |
 | IsolationForest outlier | `anomaly` | (ML baseline; see README) |
 
 ## Code entry points

@@ -30,6 +30,8 @@ ALERT_TYPES = [
     "karma",
     "pmkid_harvest",
     "handshake_harvest",
+    "beacon_fingerprint_mismatch",
+    "beacon_tsf_anomaly",
 ]
 
 

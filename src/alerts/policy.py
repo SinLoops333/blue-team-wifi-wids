@@ -21,8 +21,10 @@ DEFAULT_TYPE_SEVERITY = {
     "karma": AlertSeverity.HIGH,
     "pmkid_harvest": AlertSeverity.HIGH,
     "handshake_harvest": AlertSeverity.HIGH,
+    "beacon_tsf_anomaly": AlertSeverity.HIGH,
     "evil_twin": AlertSeverity.CRITICAL,
     "encryption_downgrade": AlertSeverity.CRITICAL,
+    "beacon_fingerprint_mismatch": AlertSeverity.CRITICAL,
 }
 
 

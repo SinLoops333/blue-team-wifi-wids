@@ -28,7 +28,8 @@ hit allowlisted gear you own, with RoE + CONFIRM gates and full audit logs.
 | End session + report | `python -m src.engagement_main end` |
 
 **Detectors:** deauth flood, evil twin, encryption downgrade, KARMA, PMKID,
-handshake harvest, IsolationForest anomaly (eval also compares One-Class SVM).
+handshake harvest, IsolationForest anomaly (eval also compares One-Class SVM),
+beacon IE fingerprint / TSF clone detection.
 
 **Simulations:** `evil_twin`, `karma`, `deauth`, `encryption_downgrade`,
 `pmkid`, `handshake_harvest`, `all`.
@@ -43,6 +44,7 @@ handshake harvest, IsolationForest anomaly (eval also compares One-Class SVM).
 | **KARMA** | One BSSID answers / beacons many distinct SSIDs |
 | **PMKID harvest** | EAPOL frame carrying an RSN PMKID KDE |
 | **Handshake harvest** | Deauth shortly followed by EAPOL |
+| **Beacon clone** | Same BSSID but IE fingerprint change or TSF clock anomaly |
 | **Anomaly (ML)** | IsolationForest + feature attribution; OCSVM compared in eval |
 
 ## Layout
@@ -142,6 +144,7 @@ pytest -q
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md) — pipeline diagram
+- [Roadmap](docs/ROADMAP.md) — A→E feature build order
 - [Interview brief](docs/INTERVIEW_BRIEF.md) — elevator + resume bullets + talking points
 - [Case study](docs/CASE_STUDY.md) — problem → design → metrics → ethics
 - [Sample report](docs/sample_report.html) — sanitized lab validation HTML

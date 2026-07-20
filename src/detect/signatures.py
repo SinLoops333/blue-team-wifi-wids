@@ -8,6 +8,7 @@ from typing import Deque, Dict, List, Optional, Set
 
 from ..alerts.alert import Alert, AlertSeverity
 from ..config import Config
+from .fingerprint import FingerprintBaseline, TsfTracker
 from .frame_features import FeatureExtractor, FrameEvent
 
 
@@ -24,6 +25,9 @@ class SignatureEngine:
         # Recent deauth timestamps keyed by (src, dest) for handshake harvest
         self._recent_deauths: Deque[tuple] = deque()
         self._seen_pmkid: Set[str] = set()
+        # Per-BSSID IE fingerprint + TSF trackers (clone / impersonation)
+        self._fp_baselines: Dict[str, FingerprintBaseline] = {}
+        self._tsf_trackers: Dict[str, TsfTracker] = {}
 
     def load_baseline_inventory(self, inventory: Dict[str, dict]) -> None:
         """Seed SSID map from a known-good AP inventory."""
@@ -43,6 +47,7 @@ class SignatureEngine:
         alerts: List[Alert] = []
         alerts.extend(self._check_deauth(event))
         alerts.extend(self._check_evil_twin(event))
+        alerts.extend(self._check_beacon_clone(event))
         alerts.extend(self._check_karma(event))
         alerts.extend(self._check_pmkid(event))
         alerts.extend(self._check_handshake_harvest(event))
@@ -177,6 +182,84 @@ class SignatureEngine:
                 metadata={"known_bssids": list(known.keys())},
             )
         ]
+
+    # --- Beacon IE fingerprint + TSF skew (same-BSSID clone) ---
+
+    def _check_beacon_clone(self, event: FrameEvent) -> List[Alert]:
+        if not self.config.detector("beacon_clone", "enabled", True):
+            return []
+        if event.frame_type not in ("beacon", "probe_resp"):
+            return []
+        if not event.bssid or not event.ie_fingerprint:
+            return []
+
+        bssid_l = event.bssid.lower()
+        stabilize = int(self.config.detector("beacon_clone", "stabilize_count", 3))
+        alerts: List[Alert] = []
+
+        fp = self._fp_baselines.get(bssid_l)
+        if fp is None:
+            fp = FingerprintBaseline(stabilize_count=stabilize)
+            self._fp_baselines[bssid_l] = fp
+        reason = fp.observe(event.ie_fingerprint)
+        if reason:
+            alerts.append(
+                Alert(
+                    alert_type="beacon_fingerprint_mismatch",
+                    severity=AlertSeverity.CRITICAL,
+                    title="AP beacon fingerprint changed",
+                    evidence=(
+                        f"BSSID {event.bssid} SSID '{event.ssid or '?'}': {reason}; "
+                        f"ie_ids={list(event.ie_ids)[:12]} "
+                        f"interval={event.beacon_interval}"
+                    ),
+                    bssid=event.bssid,
+                    ssid=event.ssid,
+                    channel=event.channel,
+                    timestamp=event.timestamp,
+                    metadata={
+                        "baseline_fp": fp.fingerprint,
+                        "observed_fp": event.ie_fingerprint,
+                        "ie_ids": list(event.ie_ids),
+                        "vendor_ouis": list(event.vendor_ouis),
+                    },
+                )
+            )
+
+        if event.tsf is not None and event.frame_type == "beacon":
+            tracker = self._tsf_trackers.get(bssid_l)
+            if tracker is None:
+                tracker = TsfTracker(
+                    min_samples=int(
+                        self.config.detector("beacon_clone", "tsf_min_samples", 4)
+                    ),
+                    max_backward_us=int(
+                        self.config.detector(
+                            "beacon_clone", "tsf_max_backward_us", 1_000_000
+                        )
+                    ),
+                )
+                self._tsf_trackers[bssid_l] = tracker
+            tsf_reason = tracker.observe(event.timestamp, int(event.tsf))
+            if tsf_reason:
+                alerts.append(
+                    Alert(
+                        alert_type="beacon_tsf_anomaly",
+                        severity=AlertSeverity.HIGH,
+                        title="AP TSF clock anomaly",
+                        evidence=(
+                            f"BSSID {event.bssid} SSID '{event.ssid or '?'}': "
+                            f"{tsf_reason}"
+                        ),
+                        bssid=event.bssid,
+                        ssid=event.ssid,
+                        channel=event.channel,
+                        timestamp=event.timestamp,
+                        metadata={"tsf": event.tsf, "reason": tsf_reason},
+                    )
+                )
+
+        return alerts
 
     def _learn_ap(self, event: FrameEvent) -> None:
         if event.frame_type not in ("beacon", "probe_resp"):
