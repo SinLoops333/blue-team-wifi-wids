@@ -83,3 +83,15 @@ honeypot:
   min_probes_for_ml: 5
   contamination: 0.08
   model_path: models/honeypot_client.pkl
+
+# Concept drift — lock a quiet baseline, alert + optionally adapt when RF stats shift
+drift:
+  enabled: true
+  reference_windows: 40
+  recent_windows: 20
+  min_recent: 15
+  psi_threshold: 0.25
+  mean_shift_threshold: 2.5
+  adapt: true
+  adapt_fraction: 0.25
+  alert_cooldown_seconds: 120

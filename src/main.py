@@ -33,6 +33,7 @@ from src.dashboard.app import create_app
 from src.detect.anomaly import AnomalyDetector
 from src.detect.baseline import BaselineStore
 from src.detect.frame_features import FeatureExtractor, parse_frame
+from src.detect.drift import DriftMonitor
 from src.detect.fusion import RadioFusionEngine
 from src.detect.honeypot import HoneypotEngine
 from src.detect.signatures import SignatureEngine
@@ -83,6 +84,7 @@ class WIDSEngine:
         self.honeypot = HoneypotEngine(config)
         if self.honeypot.enabled():
             self.honeypot.load_or_train_default()
+        self.drift = DriftMonitor(config)
 
         dedup_s = float(config.alerts.get("dedup_seconds", 60))
         self.deduper = AlertDeduper(dedup_seconds=dedup_s)
@@ -129,6 +131,8 @@ class WIDSEngine:
                 self.anomaly.maybe_train()
             else:
                 self._emit(self.anomaly.evaluate(windows))
+            # Continual baseline / concept drift (uses quiet-ish windows)
+            self._emit(self.drift.observe_windows(windows, now=now))
 
             self.baseline.update_from_inventory(self.extractor.ap_inventory)
             self.store.update_ap_inventory(self.extractor.ap_inventory)

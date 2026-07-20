@@ -29,6 +29,7 @@ DEFAULT_TYPE_SEVERITY = {
     "radio_ssid_split_view": AlertSeverity.CRITICAL,
     "honeypot_recon_burst": AlertSeverity.HIGH,
     "honeypot_client_anomaly": AlertSeverity.MEDIUM,
+    "baseline_concept_drift": AlertSeverity.MEDIUM,
     "radio_channel_conflict": AlertSeverity.HIGH,
 }
 

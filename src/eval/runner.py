@@ -13,6 +13,7 @@ from sklearn.svm import OneClassSVM
 
 from ..config import Config
 from ..detect.frame_features import FeatureExtractor, WindowFeatures, parse_frame
+from ..detect.drift import evaluate_drift_detection
 from ..detect.fusion import RadioFusionEngine
 from ..detect.honeypot import HoneypotEngine, evaluate_honeypot_model
 from ..detect.signatures import SignatureEngine
@@ -256,6 +257,7 @@ def run_full_eval(cfg: Config) -> Dict[str, Any]:
         "signatures": evaluate_signatures(cfg),
         "anomaly_models": anomaly,
         "honeypot_client_model": evaluate_honeypot_model(),
+        "concept_drift": evaluate_drift_detection(),
         # Back-compat key used by older tests / docs
         "isolation_forest": {
             "n_train_benign": anomaly["n_train_benign"],
@@ -340,6 +342,18 @@ def report_markdown(result: Dict[str, Any]) -> str:
             f"ROC-AUC: **{hp.get('roc_auc')}**  "
             f"(train_benign={hp.get('n_train_benign')}, "
             f"test_recon={hp.get('n_test_recon')})",
+            "",
+        ]
+
+    drift = result.get("concept_drift") or {}
+    if drift:
+        lines += [
+            "",
+            "## Concept drift (PSI on window features)",
+            "",
+            f"PSI same dist: `{drift.get('psi_same_distribution')}`  ·  "
+            f"PSI shifted: **{drift.get('psi_shifted_distribution')}**  ·  "
+            f"detects_shift={drift.get('detects_shift')}",
             "",
         ]
 

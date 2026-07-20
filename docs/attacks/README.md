@@ -25,6 +25,7 @@ Scope rules: lab targets ⊆ `config/wids.yaml` allowlist. Foreign BSSIDs are re
 | Same-BSSID IE / TSF clone | `beacon_fingerprint_mismatch`, `beacon_tsf_anomaly` | [beacon_clone.md](beacon_clone.md) |
 | Multi-radio fusion | `radio_ssid_split_view`, `radio_channel_conflict`, `radio_fingerprint_disagreement` | [fusion.md](fusion.md) |
 | Owned honeypot recon | `honeypot_recon_burst`, `honeypot_client_anomaly` | [honeypot.md](honeypot.md) |
+| Concept drift | `baseline_concept_drift` | [drift.md](drift.md) |
 | IsolationForest outlier | `anomaly` | (ML baseline; see README) |
 
 ## Code entry points

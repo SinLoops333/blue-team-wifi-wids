@@ -82,6 +82,7 @@ class Config:
         if not self.fusion and isinstance(self._raw.get("capture"), dict):
             self.fusion = (self._raw["capture"].get("fusion") or {})
         self.honeypot = self._raw.get("honeypot") or {}
+        self.drift = self._raw.get("drift") or {}
 
     def path(self, relative: str) -> Path:
         """Resolve a path relative to the project root."""
