@@ -15,7 +15,8 @@ class Scenario:
     name: str
     label: str  # "benign" or attack family
     expected_alerts: Set[str]
-    packets: List[Packet] = field(default_factory=list)
+    # Packet or (packet, radio_id) for multi-radio fusion scenarios
+    packets: List = field(default_factory=list)
 
 
 def _benign_beacons(n: int = 20) -> List[Packet]:
@@ -129,6 +130,62 @@ def build_scenarios() -> List[Scenario]:
                     open_network=False,
                     tsf=100,
                 )
+            ],
+        ),
+        Scenario(
+            name="fusion_ssid_split",
+            label="fusion",
+            expected_alerts={"radio_ssid_split_view"},
+            packets=[
+                (
+                    sim._beacon(real_bssid, real_ssid, channel=11, open_network=False),
+                    "primary",
+                ),
+                (
+                    sim._beacon(
+                        sim.LAB_EVIL_TWIN_BSSID,
+                        real_ssid,
+                        channel=6,
+                        open_network=True,
+                    ),
+                    "secondary",
+                ),
+            ],
+        ),
+        Scenario(
+            name="fusion_channel_conflict",
+            label="fusion",
+            expected_alerts={"radio_channel_conflict"},
+            packets=[
+                (
+                    sim._beacon(real_bssid, real_ssid, channel=11, open_network=False),
+                    "primary",
+                ),
+                (
+                    sim._beacon(real_bssid, real_ssid, channel=6, open_network=False),
+                    "secondary",
+                ),
+            ],
+        ),
+        Scenario(
+            name="fusion_fingerprint_disagreement",
+            label="fusion",
+            expected_alerts={"radio_fingerprint_disagreement"},
+            packets=[
+                (
+                    sim._beacon(real_bssid, real_ssid, channel=11, open_network=False),
+                    "primary",
+                ),
+                (
+                    sim._beacon(
+                        real_bssid,
+                        real_ssid,
+                        channel=11,
+                        open_network=False,
+                        extra_vendor_oui=b"\x00\x13\x37",
+                    ),
+                    "secondary",
+                ),
             ],
         ),
         Scenario(

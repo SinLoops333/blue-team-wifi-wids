@@ -66,6 +66,7 @@ class FrameEvent:
     beacon_interval: Optional[int] = None
     tsf: Optional[int] = None
     capability: Optional[int] = None
+    radio_id: Optional[str] = None  # "primary" / "secondary" for fusion
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -257,7 +258,12 @@ def _eapol_message(pkt: Packet) -> Tuple[bool, Optional[int], bool]:
     return True, msg, has_pmkid
 
 
-def parse_frame(pkt: Packet, timestamp: Optional[float] = None) -> Optional[FrameEvent]:
+def parse_frame(
+    pkt: Packet,
+    timestamp: Optional[float] = None,
+    *,
+    radio_id: Optional[str] = None,
+) -> Optional[FrameEvent]:
     """Convert a Scapy packet into a FrameEvent, or None if not relevant 802.11."""
     if not pkt.haslayer(Dot11):
         return None
@@ -335,6 +341,7 @@ def parse_frame(pkt: Packet, timestamp: Optional[float] = None) -> Optional[Fram
         beacon_interval=beacon_interval,
         tsf=tsf,
         capability=capability,
+        radio_id=radio_id,
     )
 
 

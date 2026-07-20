@@ -13,6 +13,7 @@ hit allowlisted gear you own, with RoE + CONFIRM gates and full audit logs.
 | Capability | Command |
 |---|---|
 | Live monitor + dashboard | `python -m src.main` |
+| Dual-radio fusion | `python -m src.main --fusion --channel 11` |
 | Pin monitor channel (lab) | `python -m src.main --channel 11` |
 | Offline pcap analysis | `python -m src.main --offline file.pcap` |
 | Keep dashboard after offline | `… --offline file.pcap --keep-dashboard` |
@@ -45,6 +46,7 @@ beacon IE fingerprint / TSF clone detection.
 | **PMKID harvest** | EAPOL frame carrying an RSN PMKID KDE |
 | **Handshake harvest** | Deauth shortly followed by EAPOL |
 | **Beacon clone** | Same BSSID but IE fingerprint change or TSF clock anomaly |
+| **Radio fusion** | Multi-radio SSID split / channel conflict / IE disagreement |
 | **Anomaly (ML)** | IsolationForest + feature attribution; OCSVM compared in eval |
 
 ## Layout

@@ -13,6 +13,7 @@ from sklearn.svm import OneClassSVM
 
 from ..config import Config
 from ..detect.frame_features import FeatureExtractor, WindowFeatures, parse_frame
+from ..detect.fusion import RadioFusionEngine
 from ..detect.signatures import SignatureEngine
 from .dataset import (
     Scenario,
@@ -32,11 +33,15 @@ ALERT_TYPES = [
     "handshake_harvest",
     "beacon_fingerprint_mismatch",
     "beacon_tsf_anomaly",
+    "radio_fingerprint_disagreement",
+    "radio_channel_conflict",
+    "radio_ssid_split_view",
 ]
 
 
 def _run_scenario(cfg: Config, scenario: Scenario) -> Set[str]:
     engine = SignatureEngine(cfg)
+    fusion = RadioFusionEngine(cfg)
     engine.load_baseline_inventory(
         {
             "00:13:37:a9:43:43": {
@@ -49,12 +54,18 @@ def _run_scenario(cfg: Config, scenario: Scenario) -> Set[str]:
     extractor = FeatureExtractor(window_seconds=60)
     predicted: Set[str] = set()
     t0 = time.time()
-    for i, pkt in enumerate(scenario.packets):
-        ev = parse_frame(pkt, timestamp=t0 + i * 0.01)
+    for i, item in enumerate(scenario.packets):
+        radio_id = None
+        pkt = item
+        if isinstance(item, tuple) and len(item) == 2:
+            pkt, radio_id = item
+        ev = parse_frame(pkt, timestamp=t0 + i * 0.01, radio_id=radio_id)
         if ev is None:
             continue
         extractor.ingest(ev)
         for alert in engine.process(ev, extractor):
+            predicted.add(alert.alert_type)
+        for alert in fusion.process(ev):
             predicted.add(alert.alert_type)
     return predicted
 
@@ -73,6 +84,10 @@ def evaluate_signatures(cfg: Config) -> Dict[str, Any]:
         "window_seconds": 60,
         "min_ssids_per_bssid": 5,
     }
+    # Fusion scenarios need the engine on
+    cfg.fusion = dict(cfg.fusion or {})
+    cfg.fusion["enabled"] = True
+    cfg.fusion.setdefault("disagreement_window_seconds", 30)
 
     expected_sets: List[Set[str]] = []
     predicted_sets: List[Set[str]] = []

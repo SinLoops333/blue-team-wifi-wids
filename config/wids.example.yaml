@@ -62,3 +62,13 @@ alerts:
   # severity_overrides:
   #   anomaly: low
   #   deauth_flood: high
+
+# Dual-radio / multi-channel fusion (Mark VII: second monitor radio)
+# Off by default — enable when wlan2 (or another radio) is in monitor mode.
+fusion:
+  enabled: false
+  secondary_interface: auto    # or e.g. wlan2
+  # secondary_channel: 6       # pin secondary; if omitted, hop across hop_channels
+  hop_channels: [1, 6, 11]
+  hop_seconds: 2.0
+  disagreement_window_seconds: 30

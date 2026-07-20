@@ -25,6 +25,9 @@ DEFAULT_TYPE_SEVERITY = {
     "evil_twin": AlertSeverity.CRITICAL,
     "encryption_downgrade": AlertSeverity.CRITICAL,
     "beacon_fingerprint_mismatch": AlertSeverity.CRITICAL,
+    "radio_fingerprint_disagreement": AlertSeverity.CRITICAL,
+    "radio_ssid_split_view": AlertSeverity.CRITICAL,
+    "radio_channel_conflict": AlertSeverity.HIGH,
 }
 
 

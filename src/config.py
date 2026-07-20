@@ -77,6 +77,10 @@ class Config:
         self.dashboard = self._raw.get("dashboard") or {}
         self.store = self._raw.get("store") or {}
         self.alerts = self._raw.get("alerts") or {}
+        self.fusion = self._raw.get("fusion") or {}
+        # Back-compat: allow fusion under capture.fusion
+        if not self.fusion and isinstance(self._raw.get("capture"), dict):
+            self.fusion = (self._raw["capture"].get("fusion") or {})
 
     def path(self, relative: str) -> Path:
         """Resolve a path relative to the project root."""

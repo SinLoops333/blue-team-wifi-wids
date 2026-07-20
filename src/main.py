@@ -26,12 +26,14 @@ from src.alerts.alert import AlertDeduper
 from src.alerts.policy import AlertPolicy
 from src.alerts.store import EventStore
 from src.capture.live_sniffer import LiveSniffer
+from src.capture.multi_radio import DualRadioSniffer, RadioSpec
 from src.capture.pineapple_ssh import PineappleSSH
 from src.config import Config, get_config
 from src.dashboard.app import create_app
 from src.detect.anomaly import AnomalyDetector
 from src.detect.baseline import BaselineStore
 from src.detect.frame_features import FeatureExtractor, parse_frame
+from src.detect.fusion import RadioFusionEngine
 from src.detect.signatures import SignatureEngine
 from src.logging_setup import configure_logging, log_alert
 
@@ -76,12 +78,16 @@ class WIDSEngine:
         self.anomaly = AnomalyDetector(config, self.baseline)
         self.anomaly.load()
 
+        self.fusion = RadioFusionEngine(config)
+
         dedup_s = float(config.alerts.get("dedup_seconds", 60))
         self.deduper = AlertDeduper(dedup_seconds=dedup_s)
         self.policy = AlertPolicy.from_config(config.alerts)
 
         self._ssh: PineappleSSH | None = None
+        self._ssh_secondary: PineappleSSH | None = None
         self._sniffer: LiveSniffer | None = None
+        self._dual: DualRadioSniffer | None = None
         self._last_window_eval = 0.0
         self._frames_since_stats = 0
         self._replay_wallclock = False
@@ -96,15 +102,16 @@ class WIDSEngine:
             self.store.insert_alert(filtered)
             log_alert(logger, filtered.to_dict())
 
-    def on_frame(self, pkt) -> None:
+    def on_frame(self, pkt, radio_id: str | None = None) -> None:
         ts = time.time() if self._replay_wallclock else None
-        event = parse_frame(pkt, timestamp=ts)
+        event = parse_frame(pkt, timestamp=ts, radio_id=radio_id)
         if event is None:
             return
         self.extractor.ingest(event)
         self._frames_since_stats += 1
 
         alerts = self.signatures.process(event, self.extractor)
+        alerts.extend(self.fusion.process(event))
         self._emit(alerts)
 
         now = event.timestamp
@@ -181,6 +188,7 @@ class WIDSEngine:
                 "PINEAPPLE_PASSWORD not set. Copy wids/.env.example to wids/.env"
             )
 
+        fusion_on = bool(self.config.fusion.get("enabled", False))
         self._ssh = PineappleSSH(
             host=self.config.pineapple_ip,
             username=self.config.pineapple_user,
@@ -188,6 +196,11 @@ class WIDSEngine:
             port=self.config.pineapple_ssh_port,
             timeout=self.config.ssh_timeout,
         )
+
+        if fusion_on:
+            self._run_dual_radio()
+            return
+
         self._sniffer = LiveSniffer(
             ssh=self._ssh,
             interface=self.config.capture_interface,
@@ -209,12 +222,95 @@ class WIDSEngine:
         finally:
             self._finalize()
 
+    def _run_dual_radio(self) -> None:
+        assert self._ssh is not None
+        primary_iface = self.config.capture_interface
+        # Resolve primary first so we know which monitor to avoid for secondary
+        try:
+            primary_iface = self._ssh.resolve_capture_interface(primary_iface)
+        except RuntimeError as exc:
+            logger.error("%s", exc)
+            raise SystemExit(1) from exc
+
+        secondary_req = str(
+            self.config.fusion.get("secondary_interface") or "auto"
+        )
+        monitors = self._ssh.list_monitor_interfaces()
+        if secondary_req.lower() == "auto":
+            secondary_iface = next(
+                (m for m in monitors if m != primary_iface), None
+            )
+            if not secondary_iface:
+                raise SystemExit(
+                    "Fusion enabled but no second monitor-mode radio found. "
+                    "Put another Mark VII radio in monitor/Recon mode, or set "
+                    "fusion.secondary_interface explicitly."
+                )
+        else:
+            secondary_iface = secondary_req
+
+        hop = self.config.fusion.get("hop_channels") or [1, 6, 11]
+        hop_channels = [int(c) for c in hop] if hop else None
+        hop_s = float(self.config.fusion.get("hop_seconds", 2.0))
+        sec_ch = self.config.fusion.get("secondary_channel")
+        if sec_ch is not None:
+            hop_channels = None
+            secondary_channel = int(sec_ch)
+        else:
+            secondary_channel = None
+
+        self._ssh_secondary = PineappleSSH(
+            host=self.config.pineapple_ip,
+            username=self.config.pineapple_user,
+            password=self.config.pineapple_password,
+            port=self.config.pineapple_ssh_port,
+            timeout=self.config.ssh_timeout,
+        )
+
+        primary = RadioSpec(
+            radio_id="primary",
+            interface=primary_iface,
+            channel=self.channel,
+        )
+        secondary = RadioSpec(
+            radio_id="secondary",
+            interface=secondary_iface,
+            channel=secondary_channel,
+            hop_channels=hop_channels,
+            hop_seconds=hop_s,
+        )
+        self._dual = DualRadioSniffer(
+            primary_ssh=self._ssh,
+            secondary_ssh=self._ssh_secondary,
+            primary=primary,
+            secondary=secondary,
+            snaplen=self.config.capture_snaplen,
+        )
+        logger.info(
+            "Dual-radio fusion: primary=%s ch=%s | secondary=%s hop=%s",
+            primary_iface,
+            self.channel,
+            secondary_iface,
+            hop_channels or secondary_channel,
+        )
+        try:
+            self._dual.run(self.on_frame)
+        except RuntimeError as exc:
+            logger.error("%s", exc)
+            raise SystemExit(1) from exc
+        finally:
+            self._finalize()
+
     def stop(self) -> None:
         self.running = False
+        if self._dual:
+            self._dual.stop()
         if self._sniffer:
             self._sniffer.stop()
         if self._ssh:
             self._ssh.close()
+        if self._ssh_secondary:
+            self._ssh_secondary.close()
 
     def _finalize(self) -> None:
         self.store.update_ap_inventory(self.extractor.ap_inventory)
@@ -231,8 +327,12 @@ class WIDSEngine:
                 len(self.baseline.inventory),
                 self.extractor.total_frames,
             )
+        if self._dual:
+            self._dual.stop()
         if self._ssh:
             self._ssh.close()
+        if self._ssh_secondary:
+            self._ssh_secondary.close()
         logger.info("WIDS stopped. Processed %d frames.", self.extractor.total_frames)
 
 
@@ -282,6 +382,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Seconds between frames when --replay-loop (default 0.15)",
     )
     p.add_argument(
+        "--fusion",
+        action="store_true",
+        help="Enable dual-radio fusion (overrides config fusion.enabled)",
+    )
+    p.add_argument(
         "--json-logs",
         action="store_true",
         help="Emit structured JSON logs (SOC / pipeline friendly)",
@@ -299,6 +404,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.replay_loop and not args.offline:
         raise SystemExit("--replay-loop requires --offline PCAP")
+    if args.fusion:
+        config.fusion = dict(config.fusion or {})
+        config.fusion["enabled"] = True
 
     engine = WIDSEngine(
         config,
