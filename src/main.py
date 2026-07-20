@@ -36,8 +36,11 @@ from src.detect.frame_features import FeatureExtractor, parse_frame
 from src.detect.drift import DriftMonitor
 from src.detect.fusion import RadioFusionEngine
 from src.detect.honeypot import HoneypotEngine
+from src.detect.localization import LocalizationEngine
+from src.detect.privacy import PrivacyEngine
 from src.detect.signatures import SignatureEngine
 from src.logging_setup import configure_logging, log_alert
+from src.metrics import METRICS
 
 logger = logging.getLogger("wids")
 
@@ -85,6 +88,8 @@ class WIDSEngine:
         if self.honeypot.enabled():
             self.honeypot.load_or_train_default()
         self.drift = DriftMonitor(config)
+        self.privacy = PrivacyEngine(config)
+        self.localization = LocalizationEngine(config)
 
         dedup_s = float(config.alerts.get("dedup_seconds", 60))
         self.deduper = AlertDeduper(dedup_seconds=dedup_s)
@@ -106,6 +111,11 @@ class WIDSEngine:
             if not self.deduper.should_emit(filtered):
                 continue
             self.store.insert_alert(filtered)
+            METRICS.inc_alert(filtered.alert_type)
+            if filtered.alert_type == "baseline_concept_drift":
+                psi = (filtered.metadata or {}).get("psi")
+                if psi is not None:
+                    METRICS.set_drift_psi(float(psi))
             log_alert(logger, filtered.to_dict())
 
     def on_frame(self, pkt, radio_id: str | None = None) -> None:
@@ -115,10 +125,13 @@ class WIDSEngine:
             return
         self.extractor.ingest(event)
         self._frames_since_stats += 1
+        METRICS.inc_frame(event.frame_type)
 
         alerts = self.signatures.process(event, self.extractor)
         alerts.extend(self.fusion.process(event))
         alerts.extend(self.honeypot.process(event))
+        alerts.extend(self.privacy.process(event))
+        alerts.extend(self.localization.process(event))
         self._emit(alerts)
 
         now = event.timestamp

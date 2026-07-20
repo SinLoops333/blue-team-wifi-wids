@@ -218,7 +218,12 @@ def _extract_encryption(pkt: Packet) -> Optional[str]:
 def _rssi(pkt: Packet) -> Optional[int]:
     if pkt.haslayer(RadioTap):
         rt = pkt[RadioTap]
-        for attr in ("dBm_AntSignal", "dbm_antsignal"):
+        for attr in (
+            "dBm_AntSignal",
+            "dbm_antsignal",
+            "dbm_AntSignal",
+            "dBm_AntSignal",
+        ):
             if hasattr(rt, attr):
                 val = getattr(rt, attr)
                 if val is not None:
@@ -226,6 +231,14 @@ def _rssi(pkt: Packet) -> Optional[int]:
                         return int(val)
                     except (TypeError, ValueError):
                         pass
+        # Some Scapy builds store antenna signal under .fields
+        fields = getattr(rt, "fields", {}) or {}
+        for key in ("dBm_AntSignal", "dbm_antsignal"):
+            if key in fields and fields[key] is not None:
+                try:
+                    return int(fields[key])
+                except (TypeError, ValueError):
+                    pass
     return None
 
 

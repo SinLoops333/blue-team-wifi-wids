@@ -20,6 +20,7 @@ hit allowlisted gear you own, with RoE + CONFIRM gates and full audit logs.
 | Train anomaly baseline | `python -m src.main --train-baseline` |
 | Eval harness (P/R/F1, ROC-AUC) | `python -m src.eval_main` / `make eval` |
 | Stress suite + threshold autotune | `python -m src.autotune_main` / `make autotune` |
+| Export honeypot model to ONNX | `python -m src.export_onnx` |
 | One-command demo | `make demo` |
 | Health check | `python -m src.status_main` |
 | Lab scope list | `python -m src.lab_main --list` |
@@ -50,6 +51,8 @@ beacon IE fingerprint / TSF clone detection.
 | **Radio fusion** | Multi-radio SSID split / channel conflict / IE disagreement |
 | **Honeypot client** | Probe bursts + RandomForest on STA behavior toward owned SSIDs |
 | **Concept drift** | PSI + mean-shift on window features; optional baseline adapt |
+| **Privacy** | Owned STA probe-SSID exposure score |
+| **RSSI localize** | Dual-radio rough (x,y) on lab floorplan |
 | **Anomaly (ML)** | IsolationForest + feature attribution; OCSVM compared in eval |
 
 ## Layout

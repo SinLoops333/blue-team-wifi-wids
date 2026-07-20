@@ -95,3 +95,22 @@ drift:
   adapt: true
   adapt_fraction: 0.25
   alert_cooldown_seconds: 120
+
+# Owned-device probe privacy (list YOUR phone/laptop MACs only)
+privacy:
+  enabled: false
+  owned_clients: []            # e.g. ["aa:bb:cc:dd:ee:ff"]
+  # score_all_unicast: false   # dangerous — leave false unless lab-isolated
+  window_seconds: 600
+  unique_ssid_threshold: 8
+
+# Dual-radio RSSI localization on a lab floorplan (meters)
+localization:
+  enabled: false
+  window_seconds: 15
+  alert_cooldown_seconds: 60
+  ref_rssi: -40
+  path_loss_exp: 2.5
+  sensors:
+    - {radio_id: primary, x: 0, y: 0}
+    - {radio_id: secondary, x: 10, y: 0}

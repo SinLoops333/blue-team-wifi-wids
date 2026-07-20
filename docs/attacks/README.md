@@ -27,6 +27,7 @@ Scope rules: lab targets ⊆ `config/wids.yaml` allowlist. Foreign BSSIDs are re
 | Owned honeypot recon | `honeypot_recon_burst`, `honeypot_client_anomaly` | [honeypot.md](honeypot.md) |
 | Concept drift | `baseline_concept_drift` | [drift.md](drift.md) |
 | Stress + autotune | near-threshold suite / recommended thresholds | [stress_autotune.md](stress_autotune.md) |
+| Metrics / privacy / RSSI / ONNX | SOC metrics + owned privacy + lab localize + edge export | [followons.md](followons.md) |
 | IsolationForest outlier | `anomaly` | (ML baseline; see README) |
 
 ## Code entry points

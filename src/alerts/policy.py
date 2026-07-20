@@ -30,6 +30,8 @@ DEFAULT_TYPE_SEVERITY = {
     "honeypot_recon_burst": AlertSeverity.HIGH,
     "honeypot_client_anomaly": AlertSeverity.MEDIUM,
     "baseline_concept_drift": AlertSeverity.MEDIUM,
+    "privacy_probe_exposure": AlertSeverity.LOW,
+    "rssi_lab_localization": AlertSeverity.MEDIUM,
     "radio_channel_conflict": AlertSeverity.HIGH,
 }
 

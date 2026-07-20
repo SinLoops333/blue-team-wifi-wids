@@ -34,3 +34,8 @@ models/*.pkl
 *.swp
 .idea/
 .vscode/
+
+# Generated models / ONNX
+models/*.onnx
+models/*.pkl
+models/honeypot_client.json

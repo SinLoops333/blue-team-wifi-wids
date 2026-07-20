@@ -13,6 +13,7 @@ from flask import Flask, Response, jsonify, render_template, request
 from ..alerts.alert import Alert
 from ..alerts.store import EventStore
 from ..config import PROJECT_ROOT
+from ..metrics import METRICS
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
@@ -89,6 +90,14 @@ def create_app(store: EventStore) -> Flask:
                     }
                 )
         return jsonify({"available": False})
+
+    @app.route("/api/metrics")
+    def api_metrics_json():
+        return jsonify(METRICS.snapshot())
+
+    @app.route("/metrics")
+    def prometheus_metrics():
+        return Response(METRICS.prometheus_text(), mimetype="text/plain; version=0.0.4")
 
     @app.route("/api/events/stream")
     def api_stream():

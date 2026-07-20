@@ -83,6 +83,8 @@ class Config:
             self.fusion = (self._raw["capture"].get("fusion") or {})
         self.honeypot = self._raw.get("honeypot") or {}
         self.drift = self._raw.get("drift") or {}
+        self.privacy = self._raw.get("privacy") or {}
+        self.localization = self._raw.get("localization") or {}
 
     def path(self, relative: str) -> Path:
         """Resolve a path relative to the project root."""

@@ -10,6 +10,6 @@ Build order (one at a time):
 | **D** | Concept-drift / continual baseline | **Done** |
 | **E** | Detector adversarial stress suite + threshold autotune | **Done** |
 
-**Roadmap complete (A→E).** See attack docs under `docs/attacks/`.
+**Roadmap complete (A→E).** Follow-ons: [FOLLOWONS.md](FOLLOWONS.md) (metrics, ONNX, privacy, RSSI).
 
 See [INTERVIEW_BRIEF.md](INTERVIEW_BRIEF.md) for hiring framing.
